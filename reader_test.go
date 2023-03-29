@@ -236,7 +236,7 @@ func TestSimpleCase1(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
 
-	const loops = 1
+	const loops = 1000
 
 	for i := 0; i < loops; i++ {
 		sizeInBits := uint(rand.Intn(500) + 1)
@@ -252,9 +252,19 @@ func TestSimpleCase1(t *testing.T) {
 		a.Equal(int(sizeInWords), len(words))
 
 		read, err := wr.ReadNbitsBytes(12)
-		a.Nil(err)
+		if sizeInBits >= 12 {
+			if !a.Nil(err) {
+				t.Errorf(err.Error())
+				t.Errorf(errors.ErrorStack(err))
+			}
+		} else {
+			if !a.NotNil(err) {
+				t.Errorf("sizeInBits: %d", sizeInBits)
+				t.Errorf("read : %X ", read)
+				t.FailNow()
+			}
 
-		t.Logf("read : %X ", read)
+		}
 
 	}
 }
@@ -277,24 +287,36 @@ func TestSimpleBE(t *testing.T) {
 		read, err := wr.ReadNbitsBytes(int(readSize))
 
 		if readSize != 0 {
-
 			if !a.Nil(err) {
+				t.Error(errors.ErrorStack(err))
 				t.Error(err.Error())
 				t.FailNow()
 			}
 
 			wr2, err2 := gobitstream.NewReaderBE(int(sizeInBits), in2)
 			if !a.Nil(err2) {
+				t.Error(errors.ErrorStack(err))
 				t.Error(err2.Error())
 				t.FailNow()
 			}
 
 			read2, err2 := wr2.ReadNbitsBytes(int(readSize))
-			a.Nil(err)
+			if !a.Nil(err) {
+				t.Error(errors.ErrorStack(err))
+				t.Error(err2.Error())
+				t.FailNow()
+			}
 
 			reverseSlice(read)
 
-			a.Equal(read, read2)
+			if !(a.Equal(read, read2)) {
+				t.Log("read2: ", read2)
+				t.Errorf("not equal")
+				t.Errorf("readSize=%d", readSize)
+				t.Errorf("read : %X", read)
+				t.Errorf("read2: %X", read2)
+				t.FailNow()
+			}
 		} else {
 			if !a.NotNil(err) {
 				t.Error(err.Error())
@@ -302,6 +324,25 @@ func TestSimpleBE(t *testing.T) {
 			}
 		}
 	}
+}
+
+func BenchmarkIntMin(b *testing.B) {
+	sizeInBits := uint(3000)
+	in2 := tests.GenRandBytes(sizeInBits)
+	wr, _ := gobitstream.NewReaderLE(int(sizeInBits), in2)
+	for i := 0; i < b.N; i++ {
+		_, err := wr.ReadNbitsBytes(500)
+		if err != nil {
+			b.Error(err.Error())
+			b.FailNow()
+		}
+		wr.Reset()
+
+	}
+}
+
+func readBits(readBits int, wr *gobitstream.Reader) {
+	_, _ = wr.ReadNbitsBytes(readBits)
 }
 
 func reverseSlice(s []byte) {
