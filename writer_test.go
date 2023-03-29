@@ -16,31 +16,31 @@ func TestMain(m *testing.M) {
 func TestRB(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
-	//dst := bytes.NewBuffer([]byte{})
-	wr := gobitstream.NewWriter(68)
+	//in := bytes.NewBuffer([]byte{})
+	wr := gobitstream.NewWriterLE(68)
 
 	const firstWord = uint64(0xFFFFFFFF)
 	const secondWord = uint64(0xFF)
 
-	err := wr.WriteNbitsOfWord(2, firstWord)
+	err := wr.WriteNbitsFromWord(2, firstWord)
 	if !a.Nil(err) {
 		t.FailNow()
 	}
 	a.Equal([]uint64{0x3, 0}, wr.CurrentWord())
 
-	err = wr.WriteNbitsOfWord(2, firstWord)
+	err = wr.WriteNbitsFromWord(2, firstWord)
 	if !a.Nil(err) {
 		t.Logf("current word: 0x%x", wr.CurrentWord())
 		t.FailNow()
 	}
 
-	err = wr.WriteNbitsOfWord(32, firstWord)
+	err = wr.WriteNbitsFromWord(32, firstWord)
 
 	if !a.Nil(err) {
 		t.Logf("current word: 0x%x", wr.CurrentWord())
 		t.FailNow()
 	}
-	err = wr.WriteNbitsOfWord(32, firstWord)
+	err = wr.WriteNbitsFromWord(32, firstWord)
 	if !a.Nil(err) {
 		t.Logf("current word: 0x%x", wr.CurrentWord())
 		t.FailNow()
@@ -59,8 +59,8 @@ func TestRB(t *testing.T) {
 func TestRB3(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
-	//dst := bytes.NewBuffer([]byte{})
-	wr := gobitstream.NewWriter(66 + 32)
+	//in := bytes.NewBuffer([]byte{})
+	wr := gobitstream.NewWriterLE(66 + 32)
 
 	inBytes := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 

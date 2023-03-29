@@ -4,12 +4,14 @@ import (
 	"github.com/juju/errors"
 )
 
-var InvalidBitsSize = errors.New("invalid bits size")
+var InvalidBitsSizeError = errors.New("invalid bits sizeInBytes")
 
-var InvalidValueSize = errors.New("invalid value size")
+var InvalidValueSizeError = errors.New("invalid value sizeInBytes")
 
-var InvalidInputSliceSize = errors.New("invalid input slice size")
+var InvalidInputSliceSizeError = errors.New("invalid input slice sizeInBytes")
 
-var CaseWIP = errors.New("case not supported yet")
+var InvalidResultAssertionError = errors.New("invalid result assertion")
+
+var CaseWIPError = errors.New("case not supported yet")
 
 var UnexpectedCondition = errors.New("unexpected condition")
