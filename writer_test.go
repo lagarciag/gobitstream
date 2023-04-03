@@ -13,6 +13,72 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestCopyCase(t *testing.T) {
+	t.Log(t.Name())
+	_, a := tests.InitTest(t)
+
+	in := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xe0}
+	//inFieldsBits := []int{5, 23, 8, 8, 64, 22, 1}
+	inFieldsBits := []int{5, 23, 8, 8, 64, 22, 1}
+	inFieldsValues := make([]uint64, len(inFieldsBits))
+
+	countBits := 0
+	for _, bits := range inFieldsBits {
+		countBits += bits
+	}
+	t.Log("countBits:", countBits)
+
+	r, err := gobitstream.NewReaderLE(131, in)
+	if !a.Nil(err) {
+		t.Errorf(err.Error())
+		t.Errorf(errors.ErrorStack(err))
+		t.FailNow()
+	}
+
+	for i, bits := range inFieldsBits {
+		inFieldsValues[i], err = r.ReadNbitsUint64(bits)
+		if !a.Nil(err) {
+			t.Error("on step: ", i)
+			t.Errorf(err.Error())
+			t.Errorf(errors.ErrorStack(err))
+			t.FailNow()
+		}
+	}
+
+	w := gobitstream.NewWriterLE(int(131))
+	t.Logf("inFeildsValues: %X", inFieldsValues)
+	t.Log("inFeildsBits:", inFieldsBits)
+	for i, bits := range inFieldsBits {
+		err = w.WriteNbitsFromWord(bits, inFieldsValues[i])
+		if !a.Nil(err) {
+			t.Errorf(err.Error())
+			t.Errorf(errors.ErrorStack(err))
+			t.FailNow()
+		}
+	}
+	inBytes := gobitstream.BitsToBytesSize(countBits)
+	w.Flush()
+	t.Logf("in    :%X", in)
+	t.Logf("output:%X , %d vrs %d", w.Bytes(), len(w.Bytes()), inBytes)
+}
+
+func TestOneByte(t *testing.T) {
+	t.Log(t.Name())
+	_, a := tests.InitTest(t)
+
+	w := gobitstream.NewWriterBE(int(8))
+
+	//writers
+
+	err := w.WriteNbitsFromWord(8, uint64(0))
+	a.Nil(err)
+
+	w.Flush()
+	theBytes := w.Bytes()
+
+	t.Logf("%X", theBytes)
+}
+
 func TestRB(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
@@ -46,7 +112,7 @@ func TestRB(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = wr.WriteBytes()
+	err = wr.Flush()
 
 	a.Equal([]uint64{0xffffffffffffffff, 0xF}, wr.CurrentWord())
 
@@ -74,7 +140,7 @@ func TestRB3(t *testing.T) {
 		t.Error(errors.ErrorStack(err))
 	}
 
-	err = wr.WriteBytes()
+	err = wr.Flush()
 	a.Nil(err)
 
 	t.Logf("current word: 0x%x", wr.CurrentWord())

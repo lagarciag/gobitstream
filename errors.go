@@ -4,7 +4,12 @@ import (
 	"github.com/juju/errors"
 )
 
+var OffsetOutOfRangeError = errors.New("offset is out of range")
 var InvalidBitsSizeError = errors.New("invalid bits sizeInBytes")
+
+var InvalidOffsetError = errors.New("invalid offset value")
+
+var InvalidWidthError = errors.New("invalid width ")
 
 var InvalidValueSizeError = errors.New("invalid value sizeInBytes")
 

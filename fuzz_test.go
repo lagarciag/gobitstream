@@ -54,7 +54,7 @@ func FuzzReadWrite(f *testing.F) {
 						t.FailNow()
 					}
 
-					if err := wr.WriteBytes(); err != nil {
+					if err := wr.Flush(); err != nil {
 						t.FailNow()
 					}
 
@@ -80,7 +80,7 @@ func FuzzReadWrite(f *testing.F) {
 						t.FailNow()
 					}
 
-					if err := wr.WriteBytes(); err != nil {
+					if err := wr.Flush(); err != nil {
 						t.FailNow()
 					}
 

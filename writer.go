@@ -14,27 +14,36 @@ type Writer struct {
 	currBitIndex   uint // MSB: 7, LSB: 0
 	offset         int
 	accOffset      int //
+	size           int
+	sizeInBytes    int
+	sizeInWords    int
 	isLittleEndian bool
+}
+
+func newWriter(totalBits int) *Writer {
+	wr := &Writer{}
+	wr.size = totalBits
+	wr.sizeInWords = bitsToWordSize(totalBits)
+
+	wr.dstWord = make([]uint64, wr.sizeInWords)
+	wr.sizeInBytes = BitsToBytesSize(totalBits)
+	return wr
 }
 
 // NewWriterLE creates a new Writer instance.
 func NewWriterLE(totalBits int) *Writer {
-	wr := &Writer{}
+	wr := newWriter(totalBits)
 	wr.isLittleEndian = true
-	totalWords := bitsToWordSize(totalBits)
-	wr.dstWord = make([]uint64, totalWords)
 	return wr
 }
 
 func NewWriterBE(totalBits int) *Writer {
-	wr := &Writer{}
+	wr := newWriter(totalBits)
 	wr.isLittleEndian = false
-	totalWords := bitsToWordSize(totalBits)
-	wr.dstWord = make([]uint64, totalWords)
 	return wr
 }
 
-func (wr *Writer) WriteBytes() error {
+func (wr *Writer) Flush() error {
 	sizeInBytes := len(wr.dstWord) * 8
 	wr.dst = make([]byte, sizeInBytes)
 	sizeInBytes = BitsToBytesSize(wr.accOffset)
@@ -49,7 +58,7 @@ func (wr *Writer) WriteBytes() error {
 	for i, _ := range wr.dstWord {
 		binary.BigEndian.PutUint64(wr.dst[i*8:i*8+8], wr.dstWord[len(wr.dstWord)-1-i])
 	}
-	wr.dst = wr.dst[len(wr.dstWord)-sizeInBytes:]
+	wr.dst = wr.dst[len(wr.dst)-sizeInBytes:]
 	return nil
 }
 
@@ -122,8 +131,7 @@ func (wr *Writer) CurrentWord() []uint64 {
 }
 
 func (wr *Writer) Bytes() []byte {
-	out := wr.dst
-	return out
+	return wr.dst
 }
 
 func (wr *Writer) Words() []uint64 {

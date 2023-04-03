@@ -8,6 +8,52 @@ import (
 	"testing"
 )
 
+func TestReader0(t *testing.T) {
+	_, a := tests.InitTest(t)
+	const width = 576
+	size, _ := tests.SizeAndMask(width)
+
+	inBytes := make([]byte, size)
+
+	for i, _ := range inBytes {
+		inBytes[i] = 0xFF
+	}
+
+	r, err := gobitstream.NewReaderBE(int(576), inBytes)
+	if !a.Nil(err) {
+		t.Error(err.Error())
+		t.Errorf(errors.ErrorStack(err))
+		t.FailNow()
+	}
+
+	taType, err := r.ReadNbitsUint64(8)
+	if !a.Nil(err) {
+		t.Error(err.Error())
+		t.Errorf(errors.ErrorStack(err))
+		t.FailNow()
+	}
+
+	t.Log("taType: ", taType)
+
+	tdataSchema, err := r.ReadNbitsUint64(8)
+	if !a.Nil(err) {
+		t.Error(err.Error())
+		t.Errorf(errors.ErrorStack(err))
+		t.FailNow()
+	}
+
+	t.Log("tdataSchema: ", tdataSchema)
+
+	data, err := r.ReadNbitsBytes(560)
+	if !a.Nil(err) {
+		t.Error(err.Error())
+		t.Errorf(errors.ErrorStack(err))
+		t.FailNow()
+	}
+
+	t.Log("data: ", data)
+}
+
 func TestReadWrite1(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
@@ -46,7 +92,7 @@ func TestReadWrite1(t *testing.T) {
 					t.FailNow()
 				}
 
-				if err := wr.WriteBytes(); err != nil {
+				if err := wr.Flush(); err != nil {
 					t.FailNow()
 				}
 
@@ -61,6 +107,7 @@ func TestReadWrite1(t *testing.T) {
 			if !a.Nil(err) {
 				t.Errorf("reading bits: %d", readBits)
 				t.Error(err.Error())
+				t.Errorf(errors.ErrorStack(err))
 				t.FailNow()
 			}
 
@@ -68,8 +115,7 @@ func TestReadWrite1(t *testing.T) {
 			if !a.Nil(err) {
 				t.FailNow()
 			}
-
-			if err := wr.WriteBytes(); err != nil {
+			if err := wr.Flush(); err != nil {
 				t.FailNow()
 			}
 
@@ -119,7 +165,7 @@ func TestReadWrite2(t *testing.T) {
 				t.FailNow()
 			}
 
-			if err = wr.WriteBytes(); err != nil {
+			if err = wr.Flush(); err != nil {
 				t.FailNow()
 			}
 
