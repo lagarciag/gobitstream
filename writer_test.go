@@ -16,11 +16,13 @@ func TestMain(m *testing.M) {
 func TestCopyCase(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
-
-	in := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xe0}
-	//inFieldsBits := []int{5, 23, 8, 8, 64, 22, 1}
+	//e0
+	in := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00}
 	inFieldsBits := []int{5, 23, 8, 8, 64, 22, 1}
+	//inFieldsBits := []int{5, 23, 8, 8, 64, 22, 1}
 	inFieldsValues := make([]uint64, len(inFieldsBits))
+
+	t.Logf("in: %X, %X", in, in[0])
 
 	countBits := 0
 	for _, bits := range inFieldsBits {
@@ -37,6 +39,7 @@ func TestCopyCase(t *testing.T) {
 
 	for i, bits := range inFieldsBits {
 		inFieldsValues[i], err = r.ReadNbitsUint64(bits)
+		t.Logf("field %d, width: %d: %X", i, bits, inFieldsValues[i])
 		if !a.Nil(err) {
 			t.Error("on step: ", i)
 			t.Errorf(err.Error())

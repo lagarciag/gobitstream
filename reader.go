@@ -2,6 +2,7 @@ package gobitstream
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/juju/errors"
 )
 
@@ -32,6 +33,9 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	wr.size = sizeInBits
 	wr.in = in
 	wr.inWord, err = ConvertBytesToWords(sizeInBits, in)
+
+	fmt.Printf("inWord: %X\n", wr.inWord)
+
 	return wr, err
 }
 
@@ -114,6 +118,7 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 	}
 
 	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
+
 	if err != nil {
 		err = errors.Annotatef(err, "width: %d, offset %d", nBits, wr.offset)
 		return 0, errors.Trace(err)
@@ -199,7 +204,7 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 	// Initialize the result variable to 0
 	result := uint64(0)
 	words := (width + offset) / 64
-	if width%64 != 0 {
+	if (width+offset)%64 != 0 {
 		words++
 	}
 	result = (slice[0] >> offset) & ((1 << width) - 1)
@@ -218,6 +223,9 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 	wordOffset := offset / 64
 	localOffset := offset % 64
 	localSlice := slice[wordOffset:]
+
+	fmt.Printf("slice: %X", slice)
+
 	localWidth := width
 	remainingWidth := width
 	widthWords := int(width / 64)
@@ -240,24 +248,22 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 		} else {
 			localWidth = width % 64
 		}
-		//fmt.Printf("localSlice: %X\n", localSlice)
-		//fmt.Printf("localWidth: %d, localOffset: %d, wordOffset: %d\n", localWidth, localOffset, wordOffset)
 		field, err := get64BitsFieldFromSlice(localSlice, localWidth, localOffset)
 		if err != nil {
-			err = errors.Annotatef(err, "wordOffset: %d, localWidth: %d, localOffset: %d", wordOffset, localWidth, localOffset)
+			err = errors.Annotatef(err, "wordOffset: %d, localWidth: %d, localOffset: %d localSlice: %X", wordOffset, localWidth, localOffset, localSlice)
 			return nil, errors.Trace(err)
 		}
 
-		//fmt.Printf("local field: %X\n", field)
+		fmt.Printf("local field: %X, wordOffset: %d localOffset: %d localSlice: %X \n", field, wordOffset, localOffset, localSlice)
 
 		remainingWidth -= localWidth
 		resultBuff = append(resultBuff, field)
 	}
-	resultBuff, err = shiftSliceofUint64(resultBuff, int(offset%64))
+	err = shiftSliceofUint64(resultBuff, int(offset%64))
 	return resultBuff, nil
 }
 
-func shiftSliceofUint64(slice []uint64, shiftCount int) (result []uint64, err error) {
+func shiftSliceofUint64(slice []uint64, shiftCount int) (err error) {
 	lenSlice := len(slice)
 	mask := uint64((1 << shiftCount) - 1)
 	for i := 1; i < lenSlice; i++ {
@@ -265,5 +271,5 @@ func shiftSliceofUint64(slice []uint64, shiftCount int) (result []uint64, err er
 		val = val<<64 - uint64(shiftCount)
 		slice[i-1] = slice[i-1] | val
 	}
-	return slice, err
+	return err
 }

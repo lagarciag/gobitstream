@@ -105,3 +105,31 @@ func TestGetFieldFromSlice(t *testing.T) {
 	a.Equal(expected, out)
 
 }
+
+func TestExtractAndSetBitsFromSlice2(t *testing.T) {
+	_, a := tests.InitTest(t)
+	slice := []uint64{0x0123456789abcdef, 0xfedcba9876543210}
+	width := uint64(56)
+	offset := uint64(16)
+	slice2 := []uint64{0x0, 0x0}
+	slice3 := []uint64{0x0, 0x0}
+
+	expected := (slice[0] >> offset) & ((1 << width) - 1)
+	remainingBits := width - (64 - offset)
+	expected |= slice[1] & ((1 << remainingBits) - 1) << (64 - offset)
+
+	expected2 := []uint64{0x123456789ab0000, 0x10}
+
+	t.Logf("Extract: %X", expected)
+	actual, err := get64BitsFieldFromSlice(slice, width, offset)
+	a.Nil(err)
+	a.Equal(actual, expected)
+
+	err = set64BitsFieldToWordSlice(slice2, expected, width, offset)
+	a.Nil(err)
+
+	a.Equal(expected2, slice2)
+
+	err = setFieldToSlice(slice3, []uint64{expected}, width, offset)
+	a.Equal(expected2, slice3)
+}
