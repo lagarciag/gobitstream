@@ -69,17 +69,19 @@ func TestBytesToWordsRand(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
 
-	const loops = 100
+	const loops = 1000
 
 	for i := 0; i < loops; i++ {
 
 		sizeInBits := uint64(rand.Intn(64))
-
+		//sizeInBits := uint64(61)
 		if sizeInBits == 0 {
 			continue
 		}
 
 		sizeInBytes, mask := tests.SizeAndLastByteMaskLE(uint(sizeInBits))
+
+		//t.Logf("mask: %v, sizeInBytes: %d", mask, sizeInBytes)
 
 		in := make([]byte, sizeInBytes)
 
@@ -88,6 +90,7 @@ func TestBytesToWordsRand(t *testing.T) {
 		}
 		tests.MaskLastByteLE(mask, in)
 
+		//t.Logf("in %X bytes", in)
 		in2 := in
 		for i := 0; i < int(8-sizeInBytes); i++ {
 			in2 = append(in2, 0x00)
@@ -99,7 +102,9 @@ func TestBytesToWordsRand(t *testing.T) {
 
 		a.Nil(err)
 
-		a.Equal(uint64(verify), words[0])
+		if !(a.Equal(uint64(verify), words[0])) {
+			t.Log("sizeInBits: ", sizeInBits)
+		}
 	}
 }
 
@@ -339,10 +344,6 @@ func BenchmarkIntMin(b *testing.B) {
 		wr.Reset()
 
 	}
-}
-
-func readBits(readBits int, wr *gobitstream.Reader) {
-	_, _ = wr.ReadNbitsBytes(readBits)
 }
 
 func reverseSlice(s []byte) {

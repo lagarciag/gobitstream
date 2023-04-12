@@ -14,6 +14,7 @@ type Writer struct {
 	currBitIndex   uint // MSB: 7, LSB: 0
 	offset         int
 	size           int
+	accBits        int
 	sizeInBytes    int
 	sizeInWords    int
 	isLittleEndian bool
@@ -42,23 +43,34 @@ func NewWriterBE(totalBits int) *Writer {
 	return wr
 }
 
-func (wr *Writer) Flush() error {
+func (wr *Writer) Flush() (err error) {
 	sizeInBytes := len(wr.dstWord) * 8
 	wr.dst = make([]byte, sizeInBytes)
 	sizeInBytes = BitsToBytesSize(wr.offset)
-	if wr.isLittleEndian {
-		for i, word := range wr.dstWord {
-			binary.LittleEndian.PutUint64(wr.dst[i*8:i*8+8], word)
+	//fmt.Printf("---> %X\n", wr.dstWord)
+	wr.dst, err = convertWordsToBytes(wr.dstWord, wr.dst, wr.offset, wr.isLittleEndian)
+	if err != nil {
+		err = errors.Trace(err)
+	}
+	return err
+}
+
+func convertWordsToBytes(words []uint64, outBuffer []byte, sizeInBits int, isLittleEndian bool) ([]byte, error) {
+	sizeInBytes := BitsToBytesSize(sizeInBits)
+	if isLittleEndian {
+		for i, word := range words {
+			binary.LittleEndian.PutUint64(outBuffer[i*8:i*8+8], word)
 		}
 
-		wr.dst = wr.dst[0:sizeInBytes]
-		return nil
+		outBuffer = outBuffer[0:sizeInBytes]
+		return outBuffer, nil
 	}
-	for i, _ := range wr.dstWord {
-		binary.BigEndian.PutUint64(wr.dst[i*8:i*8+8], wr.dstWord[len(wr.dstWord)-1-i])
+	for i, _ := range words {
+		binary.BigEndian.PutUint64(outBuffer[i*8:i*8+8], words[len(words)-1-i])
 	}
-	wr.dst = wr.dst[len(wr.dst)-sizeInBytes:]
-	return nil
+	outBuffer = outBuffer[len(outBuffer)-sizeInBytes:]
+
+	return outBuffer, nil
 }
 
 func (wr *Writer) WriteNbitsFromBytes(nBits int, val []byte) (err error) {
@@ -69,6 +81,8 @@ func (wr *Writer) WriteNbitsFromBytes(nBits int, val []byte) (err error) {
 	}
 
 	words, err := ConvertBytesToWords(nBits, val)
+
+	//fmt.Printf("bytes to words: %X -- %d\n", words, nBits)
 
 	err = setFieldToSlice(wr.dstWord, words, uint64(nBits), uint64(wr.offset))
 	wr.offset += nBits
@@ -123,6 +137,8 @@ func set64BitsFieldToWordSlice(dstSlice []uint64, field, width, offset uint64) e
 		err := InvalidBitsSizeError
 		errors.Annotatef(err, "width must be between 1 and 64, got %d", width)
 		return errors.Trace(err)
+	} else {
+		field &= (1 << width) - 1
 	}
 	if offset >= uint64(len(dstSlice))*64 {
 		err := OffsetOutOfRangeError
@@ -152,8 +168,11 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 	if width%64 > 0 {
 		widthWords++
 	}
+	//localFieldOffset := offset % 64
+	//fieldOffset := offset / 64
+	//localDstSlice := dstSlice[fieldOffset:]
 
-	for i := 0; i < widthWords; i++ {
+	for i, fieldWord := range field {
 		localFieldOffset := (offset + uint64(64*i)) % 64
 		fieldOffset := (offset + uint64(64*i)) / 64
 		localDstSlice := dstSlice[fieldOffset:]
@@ -163,18 +182,19 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 		if remainingWidth > 64 && i == 0 {
 			localDstWidth = 64 - localFieldOffset
 		} else if remainingWidth >= 64 {
+			//if remainingWidth >= 64 {
 			localDstWidth = 64
 		} else {
 			localDstWidth = width % 64
 		}
 
-		for _, fieldWord := range field {
-
-			err := set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
-			if err != nil {
-				err = errors.Annotatef(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
-				return errors.Trace(err)
-			}
+		//for _, fieldWord := range field {
+		//fmt.Printf("fieldWord: %X --\n", fieldWord)
+		err := set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
+		if err != nil {
+			err = errors.Annotatef(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
+			return errors.Trace(err)
+			//}
 			remainingWidth -= localDstWidth
 		}
 

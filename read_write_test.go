@@ -8,52 +8,6 @@ import (
 	"testing"
 )
 
-func TestReader0(t *testing.T) {
-	_, a := tests.InitTest(t)
-	const width = 576
-	size, _ := tests.SizeAndMask(width)
-
-	inBytes := make([]byte, size)
-
-	for i, _ := range inBytes {
-		inBytes[i] = 0xFF
-	}
-
-	r, err := gobitstream.NewReaderBE(int(576), inBytes)
-	if !a.Nil(err) {
-		t.Error(err.Error())
-		t.Errorf(errors.ErrorStack(err))
-		t.FailNow()
-	}
-
-	taType, err := r.ReadNbitsUint64(8)
-	if !a.Nil(err) {
-		t.Error(err.Error())
-		t.Errorf(errors.ErrorStack(err))
-		t.FailNow()
-	}
-
-	t.Log("taType: ", taType)
-
-	tdataSchema, err := r.ReadNbitsUint64(8)
-	if !a.Nil(err) {
-		t.Error(err.Error())
-		t.Errorf(errors.ErrorStack(err))
-		t.FailNow()
-	}
-
-	t.Log("tdataSchema: ", tdataSchema)
-
-	data, err := r.ReadNbitsBytes(560)
-	if !a.Nil(err) {
-		t.Error(err.Error())
-		t.Errorf(errors.ErrorStack(err))
-		t.FailNow()
-	}
-
-	t.Log("data: ", data)
-}
-
 func TestReadWrite1(t *testing.T) {
 	t.Log(t.Name())
 	_, a := tests.InitTest(t)
@@ -62,15 +16,16 @@ func TestReadWrite1(t *testing.T) {
 
 	for i := 0; i < loops; i++ {
 		sizeInBits := uint(rand.Intn(500) + 1)
-		//sizeInBits := uint(322)
+		//sizeInBits := uint(136)
 		in2 := tests.GenRandBytes(sizeInBits)
 		rd, err := gobitstream.NewReaderLE(int(sizeInBits), in2)
 		a.Nil(err)
 		wr := gobitstream.NewWriterLE(int(sizeInBits))
-
 		readBits := uint(rand.Intn(int(sizeInBits)))
 
-		//readBits := uint(320) //239
+		//fmt.Printf("words in: %X\n", wr.Words())
+
+		//readBits := uint(129) //239
 		if readBits <= 64 {
 
 			read, err := rd.ReadNbitsUint64(int(readBits))
@@ -120,6 +75,8 @@ func TestReadWrite1(t *testing.T) {
 			}
 
 			if !a.Equal(read, wr.Bytes()) {
+				t.Logf("sizeinbits:%d", sizeInBits)
+				t.Logf("readbits:%d", readBits)
 				t.Log("in   :", in2)
 				t.Log("read :", read)
 				t.Log("bytes:", wr.Bytes())
@@ -139,8 +96,9 @@ func TestReadWrite2(t *testing.T) {
 
 	for i := 0; i < loops; i++ {
 		sizeInBits := uint(rand.Intn(5000) + 1)
+		//sizeInBits := uint(2072)
 		readBits := uint(rand.Intn(int(sizeInBits)))
-
+		//readBits := 64
 		if readBits > 64 {
 			readBits = 64
 
@@ -169,7 +127,10 @@ func TestReadWrite2(t *testing.T) {
 				t.FailNow()
 			}
 
-			a.Equal(read, wr.Bytes())
+			if !a.Equal(read, wr.Bytes()) {
+				t.Logf("sizeInBits: %d", sizeInBits)
+				t.Logf("readbits: %d", readBits)
+			}
 
 		}
 

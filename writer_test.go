@@ -22,13 +22,13 @@ func TestCopyCase(t *testing.T) {
 	//inFieldsBits := []int{5, 23, 8, 8, 64, 22, 1}
 	inFieldsValues := make([]uint64, len(inFieldsBits))
 
-	t.Logf("in: %X, %X", in, in[0])
+	//t.Logf("in: %X, %X", in, in[0])
 
 	countBits := 0
 	for _, bits := range inFieldsBits {
 		countBits += bits
 	}
-	t.Log("countBits:", countBits)
+	//t.Log("countBits:", countBits)
 
 	r, err := gobitstream.NewReaderLE(131, in)
 	if !a.Nil(err) {
@@ -39,7 +39,7 @@ func TestCopyCase(t *testing.T) {
 
 	for i, bits := range inFieldsBits {
 		inFieldsValues[i], err = r.ReadNbitsUint64(bits)
-		t.Logf("field %d, width: %d: %X", i, bits, inFieldsValues[i])
+		//t.Logf("field %d, width: %d: %X", i, bits, inFieldsValues[i])
 		if !a.Nil(err) {
 			t.Error("on step: ", i)
 			t.Errorf(err.Error())
@@ -49,8 +49,8 @@ func TestCopyCase(t *testing.T) {
 	}
 
 	w := gobitstream.NewWriterLE(int(131))
-	t.Logf("inFeildsValues: %X", inFieldsValues)
-	t.Log("inFeildsBits:", inFieldsBits)
+	//t.Logf("inFeildsValues: %X", inFieldsValues)
+	//t.Log("inFeildsBits:", inFieldsBits)
 	for i, bits := range inFieldsBits {
 		err = w.WriteNbitsFromWord(bits, inFieldsValues[i])
 		if !a.Nil(err) {
@@ -89,7 +89,6 @@ func TestRB(t *testing.T) {
 	wr := gobitstream.NewWriterLE(68)
 
 	const firstWord = uint64(0xFFFFFFFF)
-	const secondWord = uint64(0xFF)
 
 	err := wr.WriteNbitsFromWord(2, firstWord)
 	if !a.Nil(err) {
@@ -119,9 +118,9 @@ func TestRB(t *testing.T) {
 
 	a.Equal([]uint64{0xffffffffffffffff, 0xF}, wr.CurrentWord())
 
-	t.Logf("current word: 0x%x", wr.CurrentWord())
+	//t.Logf("current word: 0x%x", wr.CurrentWord())
 
-	t.Logf("bytes: %x", wr.Bytes())
+	//.Logf("bytes: %x", wr.Bytes())
 
 }
 

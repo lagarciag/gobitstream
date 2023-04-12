@@ -63,7 +63,7 @@ func TestExtractBitsFromSliceGreater64(t *testing.T) {
 	for i := range inBytes {
 		inBytes[i] = 0xFF
 	}
-	t.Logf("inBytes : %x", inBytes)
+	//t.Logf("inBytes : %x", inBytes)
 
 	reverseSlice(inBytes)
 
@@ -85,10 +85,11 @@ func TestExtractBitsFromSliceGreater64(t *testing.T) {
 		t.Logf("actual %X", actual)
 	}
 
-	a.Equal(size, len(actual))
-
-	t.Logf("acutal   : %X -- %X", actual, actual[0])
-	t.Logf("expected : %X", compareBytes)
+	if !a.Equal(size, len(actual)) {
+		t.Logf("acutal   : %X -- %X", actual, actual[0])
+		t.Logf("expected : %X", compareBytes)
+		t.FailNow()
+	}
 
 }
 

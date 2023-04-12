@@ -2,7 +2,6 @@ package gobitstream
 
 import (
 	"encoding/binary"
-	"fmt"
 	"github.com/juju/errors"
 )
 
@@ -34,7 +33,7 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	wr.in = in
 	wr.inWord, err = ConvertBytesToWords(sizeInBits, in)
 
-	fmt.Printf("inWord: %X\n", wr.inWord)
+	//fmt.Printf("inWord: %X\n", wr.inWord)
 
 	return wr, err
 }
@@ -224,7 +223,7 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 	localOffset := offset % 64
 	localSlice := slice[wordOffset:]
 
-	fmt.Printf("slice: %X", slice)
+	//fmt.Printf("slice: %X", slice)
 
 	localWidth := width
 	remainingWidth := width
@@ -254,7 +253,7 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 			return nil, errors.Trace(err)
 		}
 
-		fmt.Printf("local field: %X, wordOffset: %d localOffset: %d localSlice: %X \n", field, wordOffset, localOffset, localSlice)
+		//fmt.Printf("local field: %X, wordOffset: %d localOffset: %d localSlice: %X \n", field, wordOffset, localOffset, localSlice)
 
 		remainingWidth -= localWidth
 		resultBuff = append(resultBuff, field)

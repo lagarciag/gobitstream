@@ -57,6 +57,11 @@ func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 	words = make([]uint64, wordSize)
 	nextByteSize := 0
 	nextNBits := 0
+	modShift := nBits % 64
+	lastWordMask := uint64((1 << modShift) - 1)
+	if nBits == 64 {
+		lastWordMask = 0xFFFFFFFFFFFFFFFF
+	}
 
 	for i, _ := range words {
 		if nextByteSize != 0 {
@@ -88,6 +93,11 @@ func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 			nBits = nextNBits
 			byteSize = nextByteSize
 		}
+	}
+
+	//fmt.Printf("lastwordMask: %X -- %d\n", lastWordMask, modShift)
+	if lastWordMask != 0 {
+		words[len(words)-1] &= lastWordMask
 	}
 	return words, nil
 }
