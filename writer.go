@@ -57,20 +57,20 @@ func (wr *Writer) Flush() (err error) {
 
 func convertWordsToBytes(words []uint64, outBuffer []byte, sizeInBits int, isLittleEndian bool) ([]byte, error) {
 	sizeInBytes := BitsToBytesSize(sizeInBits)
-	if isLittleEndian {
-		for i, word := range words {
-			binary.LittleEndian.PutUint64(outBuffer[i*8:i*8+8], word)
-		}
-
-		outBuffer = outBuffer[0:sizeInBytes]
-		return outBuffer, nil
+	//if isLittleEndian {
+	for i, word := range words {
+		binary.LittleEndian.PutUint64(outBuffer[i*8:i*8+8], word)
 	}
-	for i, _ := range words {
-		binary.BigEndian.PutUint64(outBuffer[i*8:i*8+8], words[len(words)-1-i])
-	}
-	outBuffer = outBuffer[len(outBuffer)-sizeInBytes:]
 
+	outBuffer = outBuffer[0:sizeInBytes]
 	return outBuffer, nil
+	//}
+	//for i, _ := range words {
+	//	binary.BigEndian.PutUint64(outBuffer[i*8:i*8+8], words[len(words)-1-i])
+	//}
+	//outBuffer = outBuffer[len(outBuffer)-sizeInBytes:]
+	//
+	//return outBuffer, nil
 }
 
 func (wr *Writer) WriteNbitsFromBytes(nBits int, val []byte) (err error) {

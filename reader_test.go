@@ -282,10 +282,15 @@ func TestSimpleBE(t *testing.T) {
 
 	for i := 0; i < loops; i++ {
 		sizeInBits := uint(rand.Intn(500) + 1)
+		//sizeInBits := uint(161)
 		readSize := uint(rand.Intn(int(sizeInBits)))
-		in2 := tests.GenRandBytes(sizeInBits)
+		//readSize := 47
+		in0 := tests.GenRandBytes(sizeInBits)
+		mask := tests.LastByteMaskLE(sizeInBits)
+		tests.MaskLastByteLE(mask, in0)
+		//t.Logf("in0: %x", in0)
 
-		wr, err := gobitstream.NewReaderLE(int(sizeInBits), in2)
+		wr, err := gobitstream.NewReaderLE(int(sizeInBits), in0)
 
 		a.Nil(err)
 
@@ -297,8 +302,10 @@ func TestSimpleBE(t *testing.T) {
 				t.Error(err.Error())
 				t.FailNow()
 			}
-
-			wr2, err2 := gobitstream.NewReaderBE(int(sizeInBits), in2)
+			in1 := make([]byte, len(in0))
+			_ = copy(in1, in0)
+			reverseSlice(in1)
+			wr2, err2 := gobitstream.NewReaderBE(int(sizeInBits), in1)
 			if !a.Nil(err2) {
 				t.Error(errors.ErrorStack(err))
 				t.Error(err2.Error())
@@ -315,6 +322,8 @@ func TestSimpleBE(t *testing.T) {
 			reverseSlice(read)
 
 			if !(a.Equal(read, read2)) {
+				t.Logf("readSize: %d", readSize)
+				t.Logf("sizeInBits: %d ", sizeInBits)
 				t.Log("read2: ", read2)
 				t.Errorf("not equal")
 				t.Errorf("readSize=%d", readSize)

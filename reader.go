@@ -31,6 +31,7 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 
 	wr.size = sizeInBits
 	wr.in = in
+
 	wr.inWord, err = ConvertBytesToWords(sizeInBits, in)
 
 	//fmt.Printf("inWord: %X\n", wr.inWord)
@@ -50,11 +51,12 @@ func NewReaderLE(sizeInBits int, in []byte) (wr *Reader, err error) {
 }
 
 func NewReaderBE(sizeInBits int, in []byte) (wr *Reader, err error) {
+	reverseSlice(in)
 	wr, err = NewReader(sizeInBits, in)
 	if err != nil {
 		return wr, errors.Trace(err)
 	}
-	wr.isLittleEndian = false
+
 	wr.currWordIndex = 0
 
 	return wr, err
@@ -152,18 +154,24 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (resultBytes []byte, err error) {
 
 	sizeInBytes := BitsToBytesSize(nBits)
 
-	if wr.isLittleEndian {
-		for _, word := range resultWords {
-			resultBytes = binary.LittleEndian.AppendUint64(resultBytes, word)
-		}
-
-		return resultBytes[:sizeInBytes], nil
-	}
-	for i := range resultWords {
-		resultBytes = binary.BigEndian.AppendUint64(resultBytes, resultWords[(len(resultWords)-1)-i])
+	//if wr.isLittleEndian {
+	for _, word := range resultWords {
+		resultBytes = binary.LittleEndian.AppendUint64(resultBytes, word)
 	}
 
-	return resultBytes[len(resultBytes)-sizeInBytes:], nil
+	resultBytes = resultBytes[:sizeInBytes]
+
+	if !wr.isLittleEndian {
+		reverseSlice(resultBytes)
+	}
+
+	return resultBytes, nil
+	//}
+	//for i := range resultWords {
+	//	resultBytes = binary.BigEndian.AppendUint64(resultBytes, resultWords[(len(resultWords)-1)-i])
+	//}
+
+	//return resultBytes[len(resultBytes)-sizeInBytes:], nil
 }
 
 func (wr *Reader) Words() []uint64 { return wr.inWord }
