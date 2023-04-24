@@ -28,7 +28,7 @@ func TestCopyCase(t *testing.T) {
 	for _, bits := range inFieldsBits {
 		countBits += bits
 	}
-	//t.Log("countBits:", countBits)
+	//t.Logger("countBits:", countBits)
 
 	r, err := gobitstream.NewReaderLE(131, in)
 	if !a.Nil(err) {
@@ -50,7 +50,7 @@ func TestCopyCase(t *testing.T) {
 
 	w := gobitstream.NewWriterLE(int(131))
 	//t.Logf("inFeildsValues: %X", inFieldsValues)
-	//t.Log("inFeildsBits:", inFieldsBits)
+	//t.Logger("inFeildsBits:", inFieldsBits)
 	for i, bits := range inFieldsBits {
 		err = w.WriteNbitsFromWord(bits, inFieldsValues[i])
 		if !a.Nil(err) {

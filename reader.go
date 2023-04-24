@@ -2,6 +2,7 @@ package gobitstream
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/juju/errors"
 )
 
@@ -51,8 +52,10 @@ func NewReaderLE(sizeInBits int, in []byte) (wr *Reader, err error) {
 }
 
 func NewReaderBE(sizeInBits int, in []byte) (wr *Reader, err error) {
-	reverseSlice(in)
-	wr, err = NewReader(sizeInBits, in)
+	inx := make([]byte, len(in))
+	_ = copy(inx, in)
+	reverseSlice(inx)
+	wr, err = NewReader(sizeInBits, inx)
 	if err != nil {
 		return wr, errors.Trace(err)
 	}
@@ -133,14 +136,16 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 	return resWords[0], nil
 }
 
-func (wr *Reader) ReadNbitsBytes(nBits int) (resultBytes []byte, err error) {
+func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
-		return resultBytes, errors.Trace(err)
+		return outBytes, errors.Trace(err)
 	}
 	resultWords, err := wr.ReadNbitsWords64(nBits)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
+
+	fmt.Printf("%d - resultWords: %X", nBits, resultWords)
 
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
@@ -150,9 +155,11 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (resultBytes []byte, err error) {
 	}
 
 	wr.resBytesBuffer = wr.resBytesBuffer[:0]
-	resultBytes = wr.resBytesBuffer
+	resultBytes := wr.resBytesBuffer
 
 	sizeInBytes := BitsToBytesSize(nBits)
+
+	fmt.Printf("%d - 1 - resultWords %X  -- %d\n", nBits, resultWords, nBits)
 
 	//if wr.isLittleEndian {
 	for _, word := range resultWords {
@@ -162,8 +169,13 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (resultBytes []byte, err error) {
 	resultBytes = resultBytes[:sizeInBytes]
 
 	if !wr.isLittleEndian {
-		reverseSlice(resultBytes)
+		outBytes = make([]byte, len(resultBytes))
+		_ = copy(outBytes, resultBytes)
+		reverseSlice(outBytes)
+		fmt.Printf("%d - 2 - resultWordsBE %X  -- %d\n", nBits, outBytes, nBits)
+		return outBytes, nil
 	}
+	fmt.Printf("%d - 2 - resultWordsLE %X  -- %d\n", nBits, resultWords, nBits)
 
 	return resultBytes, nil
 	//}
@@ -225,19 +237,19 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 }
 
 func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64) (out []uint64, err error) {
+	lastWordMask := 0
 	// Compute the number of uint64 values required to store the field
-	//fieldSize := width
 	wordOffset := offset / 64
 	localOffset := offset % 64
 	localSlice := slice[wordOffset:]
 
-	//fmt.Printf("slice: %X", slice)
-
 	localWidth := width
 	remainingWidth := width
 	widthWords := int(width / 64)
-	if width%64 > 0 {
+	mod64 := width % 64
+	if mod64 > 0 {
 		widthWords++
+		lastWordMask = (1 << mod64) - 1
 	}
 
 	// Allocate a slice to store the field
@@ -266,17 +278,62 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 		remainingWidth -= localWidth
 		resultBuff = append(resultBuff, field)
 	}
-	err = shiftSliceofUint64(resultBuff, int(offset%64))
+	resultBuff = ShiftSliceOfUint64Left(resultBuff, int(offset%64))
+
+	if lastWordMask != 0 {
+		resultBuff[len(resultBuff)-1] &= uint64(lastWordMask)
+	}
+
 	return resultBuff, nil
 }
 
-func shiftSliceofUint64(slice []uint64, shiftCount int) (err error) {
-	lenSlice := len(slice)
-	mask := uint64((1 << shiftCount) - 1)
-	for i := 1; i < lenSlice; i++ {
-		val := slice[i] & mask
-		val = val<<64 - uint64(shiftCount)
-		slice[i-1] = slice[i-1] | val
+// ShiftSliceOfUint64Left performs a left shift on a slice of uint64 values by a given shift count.
+// The shift is performed in place on the input slice.
+//
+// Parameters:
+// - slice: A slice of uint64 values to be shifted.
+// - shiftCount: The number of bits by which the values in the slice should be shifted left.
+//   The shift count is computed modulo 64 to ensure that it falls within the valid range of 0 to 63.
+//
+// Returns:
+// - slice: The input slice after performing the left shift operation.
+//
+// Behavior:
+// - The function iterates over each uint64 value in the input slice.
+// - Each value is shifted left by the specified shift count using the bitwise left shift operator.
+// - The carry from the previous iteration, if any, is added to the shifted value using the bitwise OR operator.
+// - The carry for the next iteration is updated by shifting the current value right by (64 - shift count)
+//   using the bitwise right shift operator.
+// - The input slice is updated in place with the shifted value.
+// - If there is a remaining carry after iterating through the entire slice, it is appended to the end of the slice.
+//
+// Example Usage:
+//   slice := []uint64{1, 2, 3}
+//   shiftedSlice := ShiftSliceOfUint64Left(slice, 3)
+//   fmt.Println(shiftedSlice) // Output: [8 16 24]
+
+func ShiftSliceOfUint64Left(slice []uint64, shiftCount int) []uint64 {
+	numShifts := shiftCount % 64
+	carry := uint64(0)
+
+	for i := 0; i < len(slice); i++ {
+		// Shift left by numShifts bits
+		temp := slice[i] << numShifts
+
+		// Add carry from previous iteration
+		temp |= carry
+
+		// Update carry for next iteration
+		carry = slice[i] >> (64 - numShifts)
+
+		// Update slice with shifted value
+		slice[i] = temp
 	}
-	return err
+
+	// If there's a remaining carry, append it to the slice
+	if carry > 0 {
+		slice = append(slice, carry)
+	}
+
+	return slice
 }

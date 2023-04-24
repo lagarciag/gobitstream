@@ -2,6 +2,7 @@ package gobitstream
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/juju/errors"
 )
 
@@ -24,9 +25,9 @@ func newWriter(totalBits int) *Writer {
 	wr := &Writer{}
 	wr.size = totalBits
 	wr.sizeInWords = bitsToWordSize(totalBits)
-
 	wr.dstWord = make([]uint64, wr.sizeInWords)
 	wr.sizeInBytes = BitsToBytesSize(totalBits)
+	//fmt.Println("sizeInBytes: ", wr.sizeInBytes)
 	return wr
 }
 
@@ -63,6 +64,12 @@ func convertWordsToBytes(words []uint64, outBuffer []byte, sizeInBits int, isLit
 	}
 
 	outBuffer = outBuffer[0:sizeInBytes]
+	if !isLittleEndian {
+		outBuffer2 := make([]byte, len(outBuffer))
+		_ = copy(outBuffer2, outBuffer)
+		reverseSlice(outBuffer2)
+		return outBuffer2, nil
+	}
 	return outBuffer, nil
 	//}
 	//for i, _ := range words {
@@ -73,7 +80,16 @@ func convertWordsToBytes(words []uint64, outBuffer []byte, sizeInBits int, isLit
 	//return outBuffer, nil
 }
 
-func (wr *Writer) WriteNbitsFromBytes(nBits int, val []byte) (err error) {
+func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) (err error) {
+	var val []byte
+
+	if !wr.isLittleEndian {
+		val = make([]byte, len(xval))
+		_ = copy(val, xval)
+		reverseSlice(val)
+	} else {
+		val = xval
+	}
 	byteSize := BitsToBytesSize(nBits)
 
 	if errx := checkByteSize(byteSize, len(val)); errx != nil {
@@ -85,6 +101,9 @@ func (wr *Writer) WriteNbitsFromBytes(nBits int, val []byte) (err error) {
 	//fmt.Printf("bytes to words: %X -- %d\n", words, nBits)
 
 	err = setFieldToSlice(wr.dstWord, words, uint64(nBits), uint64(wr.offset))
+
+	fmt.Printf("%d -- words: %X\n", nBits, words)
+
 	wr.offset += nBits
 	return nil
 }
@@ -199,6 +218,6 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 		}
 
 	}
-	err = shiftSliceofUint64(field, int(offset%64))
+	field = ShiftSliceOfUint64Left(field, int(offset%64))
 	return nil
 }
