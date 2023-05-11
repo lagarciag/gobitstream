@@ -274,12 +274,11 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 			return nil, errors.Trace(err)
 		}
 
-		//fmt.Printf("local field: %X, wordOffset: %d localOffset: %d localSlice: %X \n", field, wordOffset, localOffset, localSlice)
-
 		remainingWidth -= localWidth
 		resultBuff = append(resultBuff, field)
 	}
-	resultBuff = ShiftSliceOfUint64Left(resultBuff, int(offset%64))
+
+	//resultBuff = ShiftSliceOfUint64Left(resultBuff, int(offset%64))
 
 	if lastWordMask != 0 {
 		resultBuff[len(resultBuff)-1] &= uint64(lastWordMask)
