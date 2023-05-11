@@ -1,3 +1,5 @@
+// Package gobitstream provides a bit stream reader and a bit stream writer in Go, allowing reading bits from a byte slice.
+// It supports both little-endian and big-endian byte orders.
 package gobitstream
 
 import (
@@ -6,21 +8,21 @@ import (
 	"github.com/juju/errors"
 )
 
-// Reader is a bit stream Reader.
-// It does not have io.Reader interface
+// Reader is a bit stream reader that allows reading bits from a byte slice.
 type Reader struct {
-	currBitIndex   int // MSB: 7, LSB: 0
-	currWordIndex  int // MSB: 7, LSB: 0
-	offset         int
-	size           int
-	inWord         []uint64
-	resWordsBuffer []uint64
-	in             []byte
-	resBytesBuffer []byte //
-	isLittleEndian bool
+	currBitIndex   int      // Current bit index in the current byte
+	currWordIndex  int      // Current word index in the inWord slice
+	offset         int      // Current offset in the bit stream
+	size           int      // Size of the bit stream in bits
+	inWord         []uint64 // Slice of uint64 words that represents the input byte slice
+	resWordsBuffer []uint64 // Buffer to store the resulting words read from the bit stream
+	in             []byte   // Input byte slice from which bits are read
+	resBytesBuffer []byte   // Buffer to store the resulting bytes read from the bit stream
+	isLittleEndian bool     // Boolean flag indicating whether the byte order is little-endian
 }
 
-// NewReader creates a new Reader instance.
+// NewReader creates a new Reader instance with the specified size in bits and input byte slice.
+// It returns a pointer to the created Reader and an error if the input byte slice is smaller than the specified size in bits.
 func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	if len(in) < BitsToBytesSize(sizeInBits) {
 		err = InvalidBitsSizeError
@@ -40,7 +42,8 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	return wr, err
 }
 
-// NewReaderLE creates a new Reader instance.
+// NewReaderLE creates a new Reader instance with the specified size in bits and input byte slice in little-endian byte order.
+// It returns a pointer to the created Reader and an error if the input byte slice is smaller than the specified size in bits.
 func NewReaderLE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	wr, err = NewReader(sizeInBits, in)
 	if err != nil {
@@ -51,6 +54,8 @@ func NewReaderLE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	return wr, err
 }
 
+// NewReaderBE creates a new Reader instance with the specified size in bits and input byte slice in big-endian byte order.
+// It returns a pointer to the created Reader and an error if the input byte slice is smaller than the specified size in bits.
 func NewReaderBE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	inx := make([]byte, len(in))
 	_ = copy(inx, in)
@@ -65,6 +70,7 @@ func NewReaderBE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	return wr, err
 }
 
+// Reset resets the Reader to its initial state, including resetting the current bit and word indices, offset, and byte order.
 func (wr *Reader) Reset() {
 	wr.currWordIndex = 0
 	wr.currBitIndex = 0
@@ -107,6 +113,8 @@ func (wr *Reader) calcParams(nBits, offset int) (sizeInBytes, wordOffset, localO
 	return sizeInBytes, wordOffset, localOffset, nextOffset, nextWordIndex, nextLocalOffset
 }
 
+// ReadNbitsWords64 reads nBits number of bits from the bit stream and returns the resulting words as a slice of uint64 values.
+// It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
 		return res, errors.Trace(err)
@@ -116,6 +124,8 @@ func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 	return resWords, nil
 }
 
+// ReadNbitsUint64 reads nBits number of bits from the bit stream and returns the resulting uint64 value.
+// It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
 		return res, errors.Trace(err)
@@ -136,6 +146,8 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 	return resWords[0], nil
 }
 
+// ReadNbitsBytes reads nBits number of bits from the bit stream and returns the resulting bytes value.
+// It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
 		return outBytes, errors.Trace(err)
@@ -159,9 +171,6 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 
 	sizeInBytes := BitsToBytesSize(nBits)
 
-	fmt.Printf("%d - 1 - resultWords %X  -- %d\n", nBits, resultWords, nBits)
-
-	//if wr.isLittleEndian {
 	for _, word := range resultWords {
 		resultBytes = binary.LittleEndian.AppendUint64(resultBytes, word)
 	}
@@ -172,18 +181,10 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 		outBytes = make([]byte, len(resultBytes))
 		_ = copy(outBytes, resultBytes)
 		reverseSlice(outBytes)
-		fmt.Printf("%d - 2 - resultWordsBE %X  -- %d\n", nBits, outBytes, nBits)
 		return outBytes, nil
 	}
-	fmt.Printf("%d - 2 - resultWordsLE %X  -- %d\n", nBits, resultWords, nBits)
 
 	return resultBytes, nil
-	//}
-	//for i := range resultWords {
-	//	resultBytes = binary.BigEndian.AppendUint64(resultBytes, resultWords[(len(resultWords)-1)-i])
-	//}
-
-	//return resultBytes[len(resultBytes)-sizeInBytes:], nil
 }
 
 func (wr *Reader) Words() []uint64 { return wr.inWord }
