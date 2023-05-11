@@ -5,7 +5,7 @@ package gobitstream
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 )
 
 // Reader is a bit stream reader that allows reading bits from a byte slice.
@@ -26,7 +26,7 @@ type Reader struct {
 func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	if len(in) < BitsToBytesSize(sizeInBits) {
 		err = InvalidBitsSizeError
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 	wr = &Reader{}
 	wr.resWordsBuffer = make([]uint64, 0, len(in)*8)
@@ -47,7 +47,7 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 func NewReaderLE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	wr, err = NewReader(sizeInBits, in)
 	if err != nil {
-		return wr, errors.Trace(err)
+		return wr, err
 	}
 	wr.isLittleEndian = true
 	wr.currWordIndex = len(wr.inWord) - 1
@@ -62,7 +62,7 @@ func NewReaderBE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	reverseSlice(inx)
 	wr, err = NewReader(sizeInBits, inx)
 	if err != nil {
-		return wr, errors.Trace(err)
+		return wr, err
 	}
 
 	wr.currWordIndex = 0
@@ -85,12 +85,13 @@ func (wr *Reader) Reset() {
 func (wr *Reader) checkNbitsSize(nBits int) error {
 	if nBits <= 0 {
 		err := InvalidBitsSizeError
-		err = errors.Annotate(err, "nBits cannot be 0")
-		return errors.Trace(err)
+		err = errors.Wrap(err, "nBits cannot be 0")
+		return err
 	} else if nBits+wr.offset > wr.size {
 		err := InvalidBitsSizeError
-		err = errors.Annotatef(err, "nBits+wr.accOffset > wr.size , nBits: %d, accOffset: %d, wr.size: %d", nBits, wr.offset, wr.size)
-		return errors.Trace(err)
+		errWrap := fmt.Sprintf("nBits+wr.accOffset > wr.size , nBits: %d, accOffset: %d, wr.size: %d", nBits, wr.offset, wr.size)
+		err = errors.Wrap(err, errWrap)
+		return err
 	}
 
 	return nil
@@ -117,7 +118,7 @@ func (wr *Reader) calcParams(nBits, offset int) (sizeInBytes, wordOffset, localO
 // It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
-		return res, errors.Trace(err)
+		return res, err
 	}
 	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
 	wr.offset += nBits
@@ -128,19 +129,19 @@ func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 // It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
-		return res, errors.Trace(err)
+		return res, err
 	}
 
 	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
 
 	if err != nil {
-		err = errors.Annotatef(err, "width: %d, offset %d", nBits, wr.offset)
-		return 0, errors.Trace(err)
+		err = errors.Wrapf(err, "width: %d, offset %d", nBits, wr.offset)
+		return 0, err
 	}
 	if len(resWords) == 0 {
 		err = InvalidResultAssertionError
-		err = errors.Annotatef(err, "nBits: %d", nBits)
-		return 0, errors.Trace(err)
+		err = errors.Wrapf(err, "nBits: %d", nBits)
+		return 0, err
 	}
 	wr.offset += nBits
 	return resWords[0], nil
@@ -150,11 +151,11 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 // It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
-		return outBytes, errors.Trace(err)
+		return outBytes, err
 	}
 	resultWords, err := wr.ReadNbitsWords64(nBits)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, err
 	}
 
 	fmt.Printf("%d - resultWords: %X", nBits, resultWords)
@@ -162,8 +163,8 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
 		err = InvalidResultAssertionError
-		err = errors.Annotatef(err, "expected resultWords size: %d, got %d", sizeInWords(nBits), len(resultWords))
-		return nil, errors.Trace(err)
+		err = errors.Wrapf(err, "expected resultWords size: %d, got %d", sizeInWords(nBits), len(resultWords))
+		return nil, err
 	}
 
 	wr.resBytesBuffer = wr.resBytesBuffer[:0]
@@ -206,19 +207,19 @@ func (wr *Reader) Words() []uint64 { return wr.inWord }
 func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, error) {
 	if offset > 64 {
 		err := InvalidOffsetError
-		errors.Annotatef(err, "offset must be less than 64, got %d", offset)
-		return 0, errors.Trace(err)
+		errors.Wrapf(err, "offset must be less than 64, got %d", offset)
+		return 0, err
 	}
 
 	if width == 0 || width > 64 {
 		err := InvalidBitsSizeError
-		errors.Annotatef(err, "width must be between 1 and 64, got %d", width)
-		return 0, errors.Trace(err)
+		errors.Wrapf(err, "width must be between 1 and 64, got %d", width)
+		return 0, err
 	}
 	if offset >= uint64(len(slice))*64 {
 		err := OffsetOutOfRangeError
-		errors.Annotatef(err, "offset: %d", offset)
-		return 0, errors.Trace(err)
+		errors.Wrapf(err, "offset: %d", offset)
+		return 0, err
 	}
 
 	// Initialize the result variable to 0
@@ -237,52 +238,120 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 	return result, nil
 }
 
-func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
-	var lastWordMask uint64
-	// Compute the number of uint64 values required to store the field
+func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
 	wordOffset := offset / 64
 	localOffset := offset % 64
 	localSlice := slice[wordOffset:]
 
-	localWidth := width
-	remainingWidth := width
-	widthWords := int(width / 64)
-	mod64 := width % 64
+	localWidth, remainingWidth, widthWords, lastWordMask := calculateFieldParameters(width)
+
+	out = out[:0]
+
+	for i := 0; i < widthWords; i++ {
+		localOffset = calculateLocalOffset(i, int(localOffset))
+		localWidth = calculateLocalWidth(remainingWidth, localWidth, i, int(width))
+
+		field, err := get64BitsFieldFromSlice(localSlice, uint64(localWidth), localOffset)
+		if err != nil {
+			err = errors.Wrapf(err, "width: %d, offset: %d", width, offset)
+			return nil, err
+		}
+
+		remainingWidth -= localWidth
+		out = append(out, field)
+	}
+
+	if widthWords > 1 {
+		out = ShiftSliceOfUint64Left(out, int(offset%64))
+	}
+
+	if lastWordMask != 0 {
+		out[len(out)-1] &= uint64(lastWordMask)
+	}
+
+	return out, nil
+}
+
+func calculateFieldParameters(width uint64) (localWidth, remainingWidth, widthWords int, lastWordMask uint64) {
+	localWidth = int(width % 64)
+	remainingWidth = int(width)
+	widthWords = remainingWidth / 64
+	mod64 := remainingWidth % 64
 	if mod64 > 0 {
 		widthWords++
 		lastWordMask = (1 << mod64) - 1
 	}
-
-	// Allocate a slice to store the field
-	resultBuff = resultBuff[:0]
-
-	// Extract the bits of the field from the slice
-	for i := 0; i < widthWords; i++ {
-		if i != 0 {
-			localOffset = 0
-		}
-		if remainingWidth > 64 && i == 0 {
-			localWidth = 64 - localOffset
-		} else if remainingWidth >= 64 {
-			localWidth = 64
-		} else {
-			localWidth = remainingWidth % 64
-		}
-		field, err := get64BitsFieldFromSlice(localSlice, localWidth, localOffset)
-		if err != nil {
-			return nil, fmt.Errorf("wordOffset: %d, localWidth: %d, localOffset: %d localSlice: %X: %w", wordOffset, localWidth, localOffset, localSlice, err)
-		}
-
-		remainingWidth -= localWidth
-		resultBuff = append(resultBuff, field)
-	}
-
-	if lastWordMask != 0 {
-		resultBuff[len(resultBuff)-1] &= uint64(lastWordMask)
-	}
-
-	return resultBuff, nil
+	return localWidth, remainingWidth, widthWords, lastWordMask
 }
+
+func calculateLocalOffset(i, localOffset int) uint64 {
+	if i != 0 {
+		return 0
+	}
+	return uint64(localOffset)
+}
+
+func calculateLocalWidth(remainingWidth, localWidth, i, width int) int {
+	if remainingWidth > 64 && i == 0 {
+		return 64 - localWidth
+	} else if remainingWidth >= 64 {
+		return 64
+	} else {
+		return width % 64
+	}
+}
+
+//
+//func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
+//	var lastWordMask uint64
+//	// Compute the number of uint64 values required to store the field
+//	wordOffset := offset / 64
+//	localOffset := offset % 64
+//	localSlice := slice[wordOffset:]
+//
+//	localWidth := width
+//	remainingWidth := width
+//	widthWords := int(width / uint64(64))
+//	mod64 := width % 64
+//	if mod64 > 0 {
+//		widthWords++
+//		lastWordMask = (1 << mod64) - 1
+//	}
+//
+//	// Allocate a slice to store the field
+//	out = out[:0]
+//
+//	// Extract the bits of the field from the slice
+//	for i := 0; i < widthWords; i++ {
+//		if i != 0 {
+//			localOffset = 0
+//		}
+//		if remainingWidth > 64 && i == 0 {
+//			localWidth = 64 - localOffset
+//		} else if remainingWidth >= 64 {
+//			localWidth = 64
+//		} else {
+//			localWidth = remainingWidth % 64
+//		}
+//		field, err := get64BitsFieldFromSlice(localSlice, localWidth, localOffset)
+//		if err != nil {
+//			return nil, fmt.Errorf("wordOffset: %d, localWidth: %d, localOffset: %d localSlice: %X: %w", wordOffset, localWidth, localOffset, localSlice, err)
+//		}
+//
+//		remainingWidth -= localWidth
+//		out = append(out, field)
+//	}
+//
+//	if widthWords > 1 {
+//		out = ShiftSliceOfUint64Left(out, int(offset%64))
+//	}
+//
+//	if lastWordMask != 0 {
+//		out[len(out)-1] &= uint64(lastWordMask)
+//	}
+//
+//	return out, nil
+//}
 
 // ShiftSliceOfUint64Left performs a left shift on a slice of uint64 values by a given shift count.
 // The shift is performed in place on the input slice.
