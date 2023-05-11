@@ -237,8 +237,8 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 	return result, nil
 }
 
-func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64) (out []uint64, err error) {
-	lastWordMask := 0
+func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
+	var lastWordMask uint64
 	// Compute the number of uint64 values required to store the field
 	wordOffset := offset / 64
 	localOffset := offset % 64
@@ -266,19 +266,16 @@ func getFieldFromSlice(resultBuff []uint64, slice []uint64, width, offset uint64
 		} else if remainingWidth >= 64 {
 			localWidth = 64
 		} else {
-			localWidth = width % 64
+			localWidth = remainingWidth % 64
 		}
 		field, err := get64BitsFieldFromSlice(localSlice, localWidth, localOffset)
 		if err != nil {
-			err = errors.Annotatef(err, "wordOffset: %d, localWidth: %d, localOffset: %d localSlice: %X", wordOffset, localWidth, localOffset, localSlice)
-			return nil, errors.Trace(err)
+			return nil, fmt.Errorf("wordOffset: %d, localWidth: %d, localOffset: %d localSlice: %X: %w", wordOffset, localWidth, localOffset, localSlice, err)
 		}
 
 		remainingWidth -= localWidth
 		resultBuff = append(resultBuff, field)
 	}
-
-	//resultBuff = ShiftSliceOfUint64Left(resultBuff, int(offset%64))
 
 	if lastWordMask != 0 {
 		resultBuff[len(resultBuff)-1] &= uint64(lastWordMask)
