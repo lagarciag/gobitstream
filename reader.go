@@ -82,6 +82,8 @@ func (wr *Reader) Reset() {
 	}
 }
 
+// checkNbitsSize checks the size of nBits and validates it against the Reader's offset and size.
+// It returns an error if the size is invalid.
 func (wr *Reader) checkNbitsSize(nBits int) error {
 	if nBits <= 0 {
 		err := InvalidBitsSizeError
@@ -89,7 +91,7 @@ func (wr *Reader) checkNbitsSize(nBits int) error {
 		return err
 	} else if nBits+wr.offset > wr.size {
 		err := InvalidBitsSizeError
-		errWrap := fmt.Sprintf("nBits+wr.accOffset > wr.size , nBits: %d, accOffset: %d, wr.size: %d", nBits, wr.offset, wr.size)
+		errWrap := fmt.Sprintf("nBits+wr.accOffset > wr.size, nBits: %d, accOffset: %d, wr.size: %d", nBits, wr.offset, wr.size)
 		err = errors.Wrap(err, errWrap)
 		return err
 	}
@@ -97,6 +99,8 @@ func (wr *Reader) checkNbitsSize(nBits int) error {
 	return nil
 }
 
+// calcParams calculates various parameters based on the provided nBits and offset values.
+// It returns sizeInBytes, wordOffset, localOffset, nextOffset, nextWordIndex, and nextLocalOffset.
 func (wr *Reader) calcParams(nBits, offset int) (sizeInBytes, wordOffset, localOffset, nextOffset, nextWordIndex, nextLocalOffset int) {
 	sizeInBytes = BitsToBytesSize(nBits)
 	nextOffset = wr.offset + nBits
@@ -238,6 +242,24 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 	return result, nil
 }
 
+// getFieldFromSlice returns a slice of uint64 that represents a field of specified width and offset
+// from the provided slice of uint64 values.
+//
+// The function takes an output slice to store the resulting field values, a slice of uint64 values,
+// a width representing the number of bits to extract, and an offset representing the position of
+// the first bit to extract. It returns the resulting field values as a slice of uint64 and an error.
+//
+// The function splits the extraction process into smaller steps. It calculates the necessary parameters
+// based on the width, such as the localWidth, remainingWidth, widthWords, and lastWordMask, which are used
+// to determine the number of iterations and mask the last word if necessary. It iterates over the widthWords
+// and extracts the relevant bits from the localSlice using the get64BitsFieldFromSlice function. It appends
+// the extracted field values to the output slice. If the widthWords is greater than 1, it performs a bitwise
+// left shift operation on the output slice. Finally, if the lastWordMask is nonzero, it applies the mask
+// to the last element of the output slice.
+//
+// If any error occurs during the extraction process, such as an invalid width or offset, it returns
+// an appropriate error with additional information. Otherwise, it returns the resulting field values
+// and no error.
 func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
 	wordOffset := offset / 64
 	localOffset := offset % 64
@@ -300,58 +322,6 @@ func calculateLocalWidth(remainingWidth, localWidth, i, width int) int {
 		return width % 64
 	}
 }
-
-//
-//func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
-//	var lastWordMask uint64
-//	// Compute the number of uint64 values required to store the field
-//	wordOffset := offset / 64
-//	localOffset := offset % 64
-//	localSlice := slice[wordOffset:]
-//
-//	localWidth := width
-//	remainingWidth := width
-//	widthWords := int(width / uint64(64))
-//	mod64 := width % 64
-//	if mod64 > 0 {
-//		widthWords++
-//		lastWordMask = (1 << mod64) - 1
-//	}
-//
-//	// Allocate a slice to store the field
-//	out = out[:0]
-//
-//	// Extract the bits of the field from the slice
-//	for i := 0; i < widthWords; i++ {
-//		if i != 0 {
-//			localOffset = 0
-//		}
-//		if remainingWidth > 64 && i == 0 {
-//			localWidth = 64 - localOffset
-//		} else if remainingWidth >= 64 {
-//			localWidth = 64
-//		} else {
-//			localWidth = remainingWidth % 64
-//		}
-//		field, err := get64BitsFieldFromSlice(localSlice, localWidth, localOffset)
-//		if err != nil {
-//			return nil, fmt.Errorf("wordOffset: %d, localWidth: %d, localOffset: %d localSlice: %X: %w", wordOffset, localWidth, localOffset, localSlice, err)
-//		}
-//
-//		remainingWidth -= localWidth
-//		out = append(out, field)
-//	}
-//
-//	if widthWords > 1 {
-//		out = ShiftSliceOfUint64Left(out, int(offset%64))
-//	}
-//
-//	if lastWordMask != 0 {
-//		out[len(out)-1] &= uint64(lastWordMask)
-//	}
-//
-//	return out, nil
-//}
 
 // ShiftSliceOfUint64Left performs a left shift on a slice of uint64 values by a given shift count.
 // The shift is performed in place on the input slice.
