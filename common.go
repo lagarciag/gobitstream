@@ -2,6 +2,7 @@ package gobitstream
 
 import (
 	"encoding/binary"
+
 	"github.com/juju/errors"
 )
 
@@ -88,8 +89,8 @@ func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 		} else {
 			return words, errors.Trace(UnexpectedCondition)
 		}
-		if nextByteSize > len(val) {
-			val = val[nextByteSize:]
+		if nextByteSize < len(val) {
+			val = val[byteSize:]
 			nBits = nextNBits
 			byteSize = nextByteSize
 		}

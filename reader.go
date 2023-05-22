@@ -5,6 +5,7 @@ package gobitstream
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -283,9 +284,9 @@ func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]ui
 		out = append(out, field)
 	}
 
-	if widthWords > 1 {
-		out = ShiftSliceOfUint64Left(out, int(offset%64))
-	}
+	// if widthWords > 1 {
+	// 	out = ShiftSliceOfUint64Left(out, int(offset%64))
+	// }
 
 	if lastWordMask != 0 {
 		out[len(out)-1] &= uint64(lastWordMask)
