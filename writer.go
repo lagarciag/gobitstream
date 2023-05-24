@@ -71,13 +71,6 @@ func convertWordsToBytes(words []uint64, outBuffer []byte, sizeInBits int, isLit
 		return outBuffer2, nil
 	}
 	return outBuffer, nil
-	//}
-	//for i, _ := range words {
-	//	binary.BigEndian.PutUint64(outBuffer[i*8:i*8+8], words[len(words)-1-i])
-	//}
-	//outBuffer = outBuffer[len(outBuffer)-sizeInBytes:]
-	//
-	//return outBuffer, nil
 }
 
 func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) (err error) {
@@ -179,6 +172,11 @@ func set64BitsFieldToWordSlice(dstSlice []uint64, field, width, offset uint64) e
 	return nil
 }
 
+// setFieldToSlice sets a field (represented as a slice of uint64 values)
+// to a destination slice (dstSlice) starting at a given bit offset.
+// The total width of the field in bits is provided by the 'width' argument.
+// Note that if the total width of the field exceeds the length of dstSlice,
+// it may lead to a runtime panic.
 func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (err error) {
 	// Compute the number of uint64 values required to store the field
 	localDstWidth := width
@@ -187,13 +185,16 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 	if width%64 > 0 {
 		widthWords++
 	}
-	//localFieldOffset := offset % 64
-	//fieldOffset := offset / 64
-	//localDstSlice := dstSlice[fieldOffset:]
 
+	// Iterate over each word in the field
 	for i, fieldWord := range field {
 		localFieldOffset := (offset + uint64(64*i)) % 64
 		fieldOffset := (offset + uint64(64*i)) / 64
+
+		if fieldOffset >= uint64(len(dstSlice)) {
+			return errors.Errorf("fieldOffset: %d is out of range", fieldOffset)
+		}
+
 		localDstSlice := dstSlice[fieldOffset:]
 		if i != 0 {
 			localFieldOffset = 0
@@ -201,23 +202,19 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 		if remainingWidth > 64 && i == 0 {
 			localDstWidth = 64 - localFieldOffset
 		} else if remainingWidth >= 64 {
-			//if remainingWidth >= 64 {
 			localDstWidth = 64
 		} else {
 			localDstWidth = width % 64
 		}
 
-		//for _, fieldWord := range field {
-		//fmt.Printf("fieldWord: %X --\n", fieldWord)
-		err := set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
+		err = set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
 		if err != nil {
-			err = errors.Wrapf(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
-			return errors.WithStack(err)
-			//}
-			remainingWidth -= localDstWidth
+			return errors.Wrapf(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
 		}
 
+		// Decrease remainingWidth only after successful operation
+		remainingWidth -= localDstWidth
 	}
-	field = ShiftSliceOfUint64Left(field, int(offset%64))
+
 	return nil
 }
