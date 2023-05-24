@@ -2,8 +2,9 @@ package gobitstream
 
 import (
 	"encoding/binary"
+	"fmt"
 
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 )
 
 func totalOffsetToLocalOffset(offset int) (wordOffset, localOffset int) {
@@ -51,11 +52,27 @@ func calcMask64(nBits int) (mask uint64, err error) {
 	return 0, InvalidBitsSizeError
 }
 
+// ConvertBytesToWords converts a byte slice into a slice of uint64 words,
+// packing the bytes into words based on the specified number of bits.
+//
+// It first determines the required word and byte sizes based on the input number of bits.
+// An error is returned if the input byte slice is smaller than the expected byte size.
+// A new uint64 slice is created to hold the words.
+//
+// Then for each word:
+//   - The function calculates the sizes for the next iteration,
+//   - Writes the corresponding bytes into the word, and
+//   - Slices the input byte slice to remove the already processed bytes.
+//
+// After all bytes have been processed, any leftover bits in the last word are cleared
+// using a mask to ensure that the result matches the specified number of bits.
+//
+// The function returns the resulting slice of words, or an error if one occurred.
 func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 	wordSize := bitsToWordSize(nBits)
 	byteSize := BitsToBytesSize(nBits)
 	if err = checkByteSize(byteSize, len(val)); err != nil {
-		return words, errors.Trace(err)
+		return words, errors.WithStack(err)
 	}
 
 	words = make([]uint64, wordSize)
@@ -63,9 +80,6 @@ func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 	nextNBits := 0
 	modShift := nBits % 64
 	lastWordMask := uint64((1 << modShift) - 1)
-	if nBits == 64 {
-		lastWordMask = 0xFFFFFFFFFFFFFFFF
-	}
 
 	for i := range words {
 		if nextByteSize != 0 {
@@ -73,32 +87,17 @@ func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 			nBits = nextNBits
 		}
 		nextByteSize, nextNBits, byteSize, nBits = calcNextSizes(nBits, byteSize)
-		if byteSize == 1 {
-			if err = writeBytesCase(i, 1, byteSize, words, val); err != nil {
-				return words, errors.Trace(err)
-			}
-		} else if byteSize <= 2 {
-			if err = writeBytesCase(i, 2, byteSize, words, val); err != nil {
-				return words, errors.Trace(err)
-			}
-		} else if byteSize <= 4 {
-			if err = writeBytesCase(i, 4, byteSize, words, val); err != nil {
-				return words, errors.Trace(err)
-			}
-		} else if byteSize <= 8 {
-			if err = writeBytesCase(i, 8, byteSize, words, val); err != nil {
-				return words, errors.Trace(err)
-			}
-		} else {
-			return words, errors.Trace(UnexpectedCondition)
+		if err = writeBytesCase(i, byteSize, words, val); err != nil {
+			return nil, errors.WithStack(err)
 		}
-		if nextByteSize < len(val) {
+		if byteSize < len(val) {
 			val = val[byteSize:]
 			nBits = nextNBits
 			byteSize = nextByteSize
+		} else {
+			break
 		}
 	}
-
 	if lastWordMask != 0 {
 		words[len(words)-1] &= lastWordMask
 	}
@@ -131,32 +130,34 @@ func bitsToWordSize(in int) int {
 func checkByteSize(byteSize, valSize int) (err error) {
 	if byteSize > valSize {
 		err = InvalidInputSliceSizeError
-		err = errors.Annotatef(err, "wanted bytes: %d, input slice sizeInBytes: %d", byteSize, valSize)
-		return errors.Trace(err)
+		err = errors.Wrapf(err, "wanted bytes: %d, input slice sizeInBytes: %d", byteSize, valSize)
+		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func writeBytesCase(i, theCase, byteSize int, words []uint64, val []byte) (err error) {
-	newVal := val
-	if byteSize <= theCase {
-		missing := theCase - byteSize
-		newVal = append(newVal, make([]byte, missing)...)
-	}
-	if len(newVal) == 0 {
-		return nil
+func writeBytesCase(i, byteSize int, words []uint64, val []byte) error {
+	// Error checking: ensure `val` has at least `byteSize` elements
+	if len(val) < byteSize {
+		return errors.WithStack(fmt.Errorf("input slice too small: expected at least %d elements, got %d", byteSize, len(val)))
 	}
 
-	if byteSize == 1 {
-		words[i] = uint64(newVal[0])
-	} else if byteSize <= 2 {
-		words[i] = uint64(binary.LittleEndian.Uint16(newVal[0:2]))
-	} else if byteSize <= 4 {
-		words[i] = uint64(binary.LittleEndian.Uint32(newVal[0:4]))
-	} else if byteSize <= 8 {
-		words[i] = binary.LittleEndian.Uint64(newVal[0:8])
-	} else {
-		return errors.Trace(InvalidBitsSizeError)
+	// Switch statement for different cases of byte sizes
+	switch byteSize {
+	case 1:
+		words[i] = uint64(val[0])
+	case 2:
+		words[i] = uint64(binary.LittleEndian.Uint16(val[:2]))
+	case 3, 4:
+		var buf [4]byte
+		copy(buf[:], val[:byteSize]) // Zero-padded
+		words[i] = uint64(binary.LittleEndian.Uint32(buf[:]))
+	case 5, 6, 7, 8:
+		var buf [8]byte
+		copy(buf[:], val[:byteSize]) // Zero-padded
+		words[i] = binary.LittleEndian.Uint64(buf[:])
+	default:
+		return errors.WithStack(InvalidBitsSizeError)
 	}
 
 	return nil
