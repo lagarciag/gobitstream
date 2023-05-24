@@ -147,7 +147,7 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 		return 0, errors.WithStack(err)
 	}
 	if len(resWords) == 0 {
-		err = InvalidResultAssertionError
+		err := errors.New("invalid result assertion")
 		err = errors.Wrapf(err, "nBits: %d", nBits)
 		return 0, errors.WithStack(err)
 	}
@@ -170,7 +170,7 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
-		err = InvalidResultAssertionError
+		err := errors.New("invalid result assertion")
 		err = errors.Wrapf(err, "expected resultWords size: %d, got %d", sizeInWords(nBits), len(resultWords))
 		return nil, errors.WithStack(err)
 	}

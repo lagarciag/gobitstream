@@ -40,18 +40,6 @@ func sizeInWords(width int) (size int) {
 	return size
 }
 
-func calcMask64(nBits int) (mask uint64, err error) {
-	if nBits < 64 {
-		mask = (uint64(uint64(1) << nBits)) - 1
-		return mask, nil
-	}
-
-	if nBits == 64 {
-		return 0xFFFFFFFFFFFFFFFF, nil
-	}
-	return 0, InvalidBitsSizeError
-}
-
 // ConvertBytesToWords converts a byte slice into a slice of uint64 words,
 // packing the bytes into words based on the specified number of bits.
 //
@@ -87,7 +75,7 @@ func ConvertBytesToWords(nBits int, val []byte) (words []uint64, err error) {
 			nBits = nextNBits
 		}
 		nextByteSize, nextNBits, byteSize, nBits = calcNextSizes(nBits, byteSize)
-		if err = writeBytesCase(i, byteSize, words, val); err != nil {
+		if err = writeBytesToUint64Array(i, byteSize, words, val); err != nil {
 			return nil, errors.WithStack(err)
 		}
 		if byteSize < len(val) {
@@ -136,7 +124,12 @@ func checkByteSize(byteSize, valSize int) (err error) {
 	return nil
 }
 
-func writeBytesCase(i, byteSize int, words []uint64, val []byte) error {
+// writeBytesToUint64Array writes a sequence of bytes into an array of uint64 values at the specified index.
+// The byteSize parameter determines the number of bytes to be written.
+// The val slice should contain at least byteSize elements.
+// The converted uint64 value is stored in the words array at the specified index i.
+// The function returns an error if the byteSize is invalid or if the val slice is too small.
+func writeBytesToUint64Array(i, byteSize int, words []uint64, val []byte) error {
 	// Error checking: ensure `val` has at least `byteSize` elements
 	if len(val) < byteSize {
 		return errors.WithStack(fmt.Errorf("input slice too small: expected at least %d elements, got %d", byteSize, len(val)))
@@ -145,19 +138,19 @@ func writeBytesCase(i, byteSize int, words []uint64, val []byte) error {
 	// Switch statement for different cases of byte sizes
 	switch byteSize {
 	case 1:
-		words[i] = uint64(val[0])
+		words[i] = uint64(val[0]) // Store the first byte as a uint64 value
 	case 2:
-		words[i] = uint64(binary.LittleEndian.Uint16(val[:2]))
+		words[i] = uint64(binary.LittleEndian.Uint16(val[:2])) // Convert the first 2 bytes to a uint16 value and store as uint64
 	case 3, 4:
 		var buf [4]byte
-		copy(buf[:], val[:byteSize]) // Zero-padded
-		words[i] = uint64(binary.LittleEndian.Uint32(buf[:]))
+		copy(buf[:], val[:byteSize])                          // Copy the bytes to a 4-byte buffer, zero-padding if necessary
+		words[i] = uint64(binary.LittleEndian.Uint32(buf[:])) // Convert the buffer to a uint32 value and store as uint64
 	case 5, 6, 7, 8:
 		var buf [8]byte
-		copy(buf[:], val[:byteSize]) // Zero-padded
-		words[i] = binary.LittleEndian.Uint64(buf[:])
+		copy(buf[:], val[:byteSize])                  // Copy the bytes to an 8-byte buffer, zero-padding if necessary
+		words[i] = binary.LittleEndian.Uint64(buf[:]) // Convert the buffer to a uint64 value and store
 	default:
-		return errors.WithStack(InvalidBitsSizeError)
+		return errors.WithStack(InvalidBitsSizeError) // Return an error for unsupported byte sizes
 	}
 
 	return nil
