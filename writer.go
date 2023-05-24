@@ -106,7 +106,7 @@ func (wr *Writer) WriteNbitsFromWord(nBits int, val uint64) (err error) {
 		return InvalidBitsSizeError
 	}
 
-	if wr.offset > 64 {
+	if wr.offset >= 64 {
 		err = setFieldToSlice(wr.dstWord, []uint64{val}, uint64(nBits), uint64(wr.offset))
 		if err != nil {
 			return errors.WithStack(err)
@@ -138,38 +138,85 @@ func (wr *Writer) Uint64() uint64 {
 }
 
 // **************************************************
-func set64BitsFieldToWordSlice(dstSlice []uint64, field, width, offset uint64) error {
-	if offset > 64 {
-		err := InvalidOffsetError
-		err = errors.Wrapf(err, "offset must be less than 64, got %d", offset)
-		return errors.WithStack(err)
+// validateParameters performs the initial checks on the parameters of set64BitsFieldToWordSlice
+func validateParameters(dstSlice []uint64, width, offset uint64) error {
+	if offset >= 64 {
+		return errors.Errorf("offset must be less than 64, got %d", offset)
 	}
-
 	if width == 0 || width > 64 {
-		err := InvalidBitsSizeError
-		err = errors.Wrapf(err, "width must be between 1 and 64, got %d", width)
-		return errors.WithStack(err)
-	} else {
-		field &= (1 << width) - 1
+		return errors.Errorf("width must be between 1 and 64, got %d", width)
 	}
 	if offset >= uint64(len(dstSlice))*64 {
-		err := OffsetOutOfRangeError
-		err = errors.Wrapf(err, "offset: %d", offset)
-		return errors.WithStack(err)
+		return errors.Errorf("offset: %d is out of range", offset)
 	}
+	return nil
+}
 
+// calculateWordSpan calculates the number of words the field spans
+func calculateWordSpan(width, offset uint64) uint64 {
 	wordSpan := (width + offset) / 64
 	if (width+offset)%64 != 0 {
 		wordSpan++
 	}
-	dstSlice[0] = dstSlice[0] | (field << offset)
+	return wordSpan
+}
 
+// setFieldInSlice sets the field in the given slice
+func setFieldInSlice(dstSlice []uint64, field, offset uint64, wordSpan uint64) error {
+	dstSlice[0] = dstSlice[0] | (field << offset)
 	if wordSpan > 1 {
+		if len(dstSlice) < 2 {
+			return errors.New("dstSlice is not large enough to hold the result")
+		}
 		dstSlice[1] = dstSlice[1] | (field >> (64 - offset))
+	}
+	return nil
+}
+
+// set64BitsFieldToWordSlice sets a 64-bit field in a slice of uint64 words.
+// This function receives a destination slice (dstSlice), a field value (field),
+// the width of the field in bits (width) and the offset in bits from the beginning of the slice (offset).
+// If the offset or width are not valid, it returns an error.
+// If the field spans more than one word in the slice and the slice is not large enough to hold the result,
+// it also returns an error.
+func set64BitsFieldToWordSlice(dstSlice []uint64, field, width, offset uint64) error {
+	err := validateParameters(dstSlice, width, offset)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	field &= (1 << width) - 1
+	wordSpan := calculateWordSpan(width, offset)
+
+	err = setFieldInSlice(dstSlice, field, offset, wordSpan)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	// Return the final result and no error
 	return nil
+}
+
+// computeDstWidth calculates the width of the destination slice for the current iteration
+func computeDstWidth(remainingWidth, localFieldOffset uint64, i int) (localDstWidth uint64) {
+	if remainingWidth > 64 && i == 0 {
+		localDstWidth = 64 - localFieldOffset
+	} else if remainingWidth >= 64 {
+		localDstWidth = 64
+	} else {
+		localDstWidth = remainingWidth % 64
+	}
+	return
+}
+
+// computeLocalOffsets calculates the local field offset and the field offset for the current iteration
+func computeLocalOffsets(offset uint64, i int) (localFieldOffset, fieldOffset uint64) {
+	localFieldOffset = (offset + uint64(64*i)) % 64
+	fieldOffset = (offset + uint64(64*i)) / 64
+	if i != 0 {
+		localFieldOffset = 0
+	}
+	return
 }
 
 // setFieldToSlice sets a field (represented as a slice of uint64 values)
@@ -179,33 +226,18 @@ func set64BitsFieldToWordSlice(dstSlice []uint64, field, width, offset uint64) e
 // it may lead to a runtime panic.
 func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (err error) {
 	// Compute the number of uint64 values required to store the field
-	localDstWidth := width
 	remainingWidth := width
-	widthWords := int(width / 64)
-	if width%64 > 0 {
-		widthWords++
-	}
 
 	// Iterate over each word in the field
 	for i, fieldWord := range field {
-		localFieldOffset := (offset + uint64(64*i)) % 64
-		fieldOffset := (offset + uint64(64*i)) / 64
+		localFieldOffset, fieldOffset := computeLocalOffsets(offset, i)
 
 		if fieldOffset >= uint64(len(dstSlice)) {
 			return errors.Errorf("fieldOffset: %d is out of range", fieldOffset)
 		}
 
 		localDstSlice := dstSlice[fieldOffset:]
-		if i != 0 {
-			localFieldOffset = 0
-		}
-		if remainingWidth > 64 && i == 0 {
-			localDstWidth = 64 - localFieldOffset
-		} else if remainingWidth >= 64 {
-			localDstWidth = 64
-		} else {
-			localDstWidth = width % 64
-		}
+		localDstWidth := computeDstWidth(remainingWidth, localFieldOffset, i)
 
 		err = set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
 		if err != nil {
