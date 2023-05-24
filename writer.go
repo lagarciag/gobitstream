@@ -3,7 +3,7 @@ package gobitstream
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 )
 
 // Writer is a bit stream writer.
@@ -51,7 +51,7 @@ func (wr *Writer) Flush() (err error) {
 	//fmt.Printf("---> %X\n", wr.dstWord)
 	wr.dst, err = convertWordsToBytes(wr.dstWord, wr.dst, wr.offset, wr.isLittleEndian)
 	if err != nil {
-		err = errors.Trace(err)
+		err = errors.WithStack(err)
 	}
 	return err
 }
@@ -93,7 +93,7 @@ func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) (err error) {
 	byteSize := BitsToBytesSize(nBits)
 
 	if errx := checkByteSize(byteSize, len(val)); errx != nil {
-		return errors.Trace(errx)
+		return errors.WithStack(errx)
 	}
 
 	words, err := ConvertBytesToWords(nBits, val)
@@ -116,12 +116,12 @@ func (wr *Writer) WriteNbitsFromWord(nBits int, val uint64) (err error) {
 	if wr.offset > 64 {
 		err = setFieldToSlice(wr.dstWord, []uint64{val}, uint64(nBits), uint64(wr.offset))
 		if err != nil {
-			return errors.Trace(err)
+			return errors.WithStack(err)
 		}
 	} else {
 		err = set64BitsFieldToWordSlice(wr.dstWord, val, uint64(nBits), uint64(wr.offset))
 		if err != nil {
-			return errors.Trace(err)
+			return errors.WithStack(err)
 		}
 	}
 	wr.offset += nBits
@@ -148,21 +148,21 @@ func (wr *Writer) Uint64() uint64 {
 func set64BitsFieldToWordSlice(dstSlice []uint64, field, width, offset uint64) error {
 	if offset > 64 {
 		err := InvalidOffsetError
-		errors.Annotatef(err, "offset must be less than 64, got %d", offset)
-		return errors.Trace(err)
+		err = errors.Wrapf(err, "offset must be less than 64, got %d", offset)
+		return errors.WithStack(err)
 	}
 
 	if width == 0 || width > 64 {
 		err := InvalidBitsSizeError
-		errors.Annotatef(err, "width must be between 1 and 64, got %d", width)
-		return errors.Trace(err)
+		err = errors.Wrapf(err, "width must be between 1 and 64, got %d", width)
+		return errors.WithStack(err)
 	} else {
 		field &= (1 << width) - 1
 	}
 	if offset >= uint64(len(dstSlice))*64 {
 		err := OffsetOutOfRangeError
-		errors.Annotatef(err, "offset: %d", offset)
-		return errors.Trace(err)
+		err = errors.Wrapf(err, "offset: %d", offset)
+		return errors.WithStack(err)
 	}
 
 	wordSpan := (width + offset) / 64
@@ -211,8 +211,8 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 		//fmt.Printf("fieldWord: %X --\n", fieldWord)
 		err := set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
 		if err != nil {
-			err = errors.Annotatef(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
-			return errors.Trace(err)
+			err = errors.Wrapf(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
+			return errors.WithStack(err)
 			//}
 			remainingWidth -= localDstWidth
 		}

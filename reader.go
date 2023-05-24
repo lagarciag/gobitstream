@@ -26,8 +26,11 @@ type Reader struct {
 // It returns a pointer to the created Reader and an error if the input byte slice is smaller than the specified size in bits.
 func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	if len(in) < BitsToBytesSize(sizeInBits) {
-		err = InvalidBitsSizeError
-		return nil, err
+		err = errors.Wrap(
+			InvalidBitsSizeError,
+			fmt.Sprintf("input byte slice is smaller than the specified size in bits: %d versus sizeInBits: %d",
+				len(in), sizeInBits))
+		return nil, errors.WithStack(err)
 	}
 	wr = &Reader{}
 	wr.resWordsBuffer = make([]uint64, 0, len(in)*8)
@@ -40,7 +43,7 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 
 	//fmt.Printf("inWord: %X\n", wr.inWord)
 
-	return wr, err
+	return wr, errors.WithStack(err)
 }
 
 // NewReaderLE creates a new Reader instance with the specified size in bits and input byte slice in little-endian byte order.
@@ -48,11 +51,11 @@ func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 func NewReaderLE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	wr, err = NewReader(sizeInBits, in)
 	if err != nil {
-		return wr, err
+		return wr, errors.WithStack(err)
 	}
 	wr.isLittleEndian = true
 	wr.currWordIndex = len(wr.inWord) - 1
-	return wr, err
+	return wr, errors.WithStack(err)
 }
 
 // NewReaderBE creates a new Reader instance with the specified size in bits and input byte slice in big-endian byte order.
@@ -63,12 +66,12 @@ func NewReaderBE(sizeInBits int, in []byte) (wr *Reader, err error) {
 	reverseSlice(inx)
 	wr, err = NewReader(sizeInBits, inx)
 	if err != nil {
-		return wr, err
+		return wr, errors.WithStack(err)
 	}
 
 	wr.currWordIndex = 0
 
-	return wr, err
+	return wr, errors.WithStack(err)
 }
 
 // Reset resets the Reader to its initial state, including resetting the current bit and word indices, offset, and byte order.
@@ -89,12 +92,12 @@ func (wr *Reader) checkNbitsSize(nBits int) error {
 	if nBits <= 0 {
 		err := InvalidBitsSizeError
 		err = errors.Wrap(err, "nBits cannot be 0")
-		return err
+		return errors.WithStack(err)
 	} else if nBits+wr.offset > wr.size {
 		err := InvalidBitsSizeError
 		errWrap := fmt.Sprintf("nBits+wr.accOffset > wr.size, nBits: %d, accOffset: %d, wr.size: %d", nBits, wr.offset, wr.size)
 		err = errors.Wrap(err, errWrap)
-		return err
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -127,26 +130,26 @@ func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 	}
 	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
 	wr.offset += nBits
-	return resWords, nil
+	return resWords, errors.WithStack(err)
 }
 
 // ReadNbitsUint64 reads nBits number of bits from the bit stream and returns the resulting uint64 value.
 // It also updates the offset in the bit stream. An error is returned if the number of bits to be read is invalid.
 func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
-		return res, err
+		return res, errors.WithStack(err)
 	}
 
 	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
 
 	if err != nil {
 		err = errors.Wrapf(err, "width: %d, offset %d", nBits, wr.offset)
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 	if len(resWords) == 0 {
 		err = InvalidResultAssertionError
 		err = errors.Wrapf(err, "nBits: %d", nBits)
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 	wr.offset += nBits
 	return resWords[0], nil
@@ -160,7 +163,7 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	}
 	resultWords, err := wr.ReadNbitsWords64(nBits)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	fmt.Printf("%d - resultWords: %X", nBits, resultWords)
@@ -169,7 +172,7 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	if len(resultWords) != sizeInWords(nBits) {
 		err = InvalidResultAssertionError
 		err = errors.Wrapf(err, "expected resultWords size: %d, got %d", sizeInWords(nBits), len(resultWords))
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	wr.resBytesBuffer = wr.resBytesBuffer[:0]
@@ -213,18 +216,18 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 	if offset > 64 {
 		err := InvalidOffsetError
 		errors.Wrapf(err, "offset must be less than 64, got %d", offset)
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 
 	if width == 0 || width > 64 {
 		err := InvalidBitsSizeError
 		errors.Wrapf(err, "width must be between 1 and 64, got %d", width)
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 	if offset >= uint64(len(slice))*64 {
 		err := OffsetOutOfRangeError
 		errors.Wrapf(err, "offset: %d", offset)
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 
 	// Initialize the result variable to 0
@@ -277,7 +280,7 @@ func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]ui
 		field, err := get64BitsFieldFromSlice(localSlice, uint64(localWidth), localOffset)
 		if err != nil {
 			err = errors.Wrapf(err, "width: %d, offset: %d", width, offset)
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 
 		remainingWidth -= localWidth
