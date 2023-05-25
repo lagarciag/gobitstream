@@ -329,31 +329,38 @@ func calculateLocalWidth(remainingWidth, localWidth, i, width int) int {
 // The shift is performed in place on the input slice.
 //
 // Parameters:
-// - slice: A slice of uint64 values to be shifted.
-// - shiftCount: The number of bits by which the values in the slice should be shifted left.
-//   The shift count is computed modulo 64 to ensure that it falls within the valid range of 0 to 63.
+//   - slice: A slice of uint64 values to be shifted.
+//   - shiftCount: The number of bits by which the values in the slice should be shifted left.
+//     The shift count is computed modulo 64 to ensure that it falls within the valid range of 0 to 63.
 //
 // Returns:
 // - slice: The input slice after performing the left shift operation.
 //
 // Behavior:
-// - The function iterates over each uint64 value in the input slice.
-// - Each value is shifted left by the specified shift count using the bitwise left shift operator.
-// - The carry from the previous iteration, if any, is added to the shifted value using the bitwise OR operator.
-// - The carry for the next iteration is updated by shifting the current value right by (64 - shift count)
-//   using the bitwise right shift operator.
-// - The input slice is updated in place with the shifted value.
-// - If there is a remaining carry after iterating through the entire slice, it is appended to the end of the slice.
+//   - The function iterates over each uint64 value in the input slice.
+//   - Each value is shifted left by the specified shift count using the bitwise left shift operator.
+//   - The carry from the previous iteration, if any, is added to the shifted value using the bitwise OR operator.
+//   - The carry for the next iteration is updated by shifting the current value right by (64 - shift count)
+//     using the bitwise right shift operator.
+//   - The input slice is updated in place with the shifted value.
+//   - If there is a remaining carry after iterating through the entire slice, it is appended to the end of the slice.
 //
 // Example Usage:
-//   slice := []uint64{1, 2, 3}
-//   shiftedSlice := ShiftSliceOfUint64Left(slice, 3)
-//   fmt.Println(shiftedSlice) // Output: [8 16 24]
+//
+//	slice := []uint64{1, 2, 3}
+//	shiftedSlice := ShiftSliceOfUint64Left(slice, 3)
+//	fmt.Println(shiftedSlice) // Output: [8 16 24]
+func ShiftSliceOfUint64Left(slice []uint64, shiftCount int) ([]uint64, error) {
 
-func ShiftSliceOfUint64Left(slice []uint64, shiftCount int) []uint64 {
 	numShifts := shiftCount % 64
-	carry := uint64(0)
+	newIndex := shiftCount / 64
 
+	// Check if newIndex is out of range
+	if newIndex >= len(slice) {
+		return nil, errors.New("shift count exceeds length of the slice")
+	}
+
+	carry := uint64(0)
 	for i := 0; i < len(slice); i++ {
 		// Shift left by numShifts bits
 		temp := slice[i] << numShifts
@@ -364,6 +371,8 @@ func ShiftSliceOfUint64Left(slice []uint64, shiftCount int) []uint64 {
 		// Update carry for next iteration
 		carry = slice[i] >> (64 - numShifts)
 
+		slice[i] = 0
+
 		// Update slice with shifted value
 		slice[i] = temp
 	}
@@ -373,5 +382,19 @@ func ShiftSliceOfUint64Left(slice []uint64, shiftCount int) []uint64 {
 		slice = append(slice, carry)
 	}
 
-	return slice
+	if newIndex > 0 {
+		tempSlice := make([]uint64, len(slice))
+		copy(tempSlice, slice)
+
+		for i, v := range tempSlice {
+			if newIndex+i < len(slice) {
+				slice[newIndex+i] = v
+			}
+			if i < newIndex {
+				slice[i] = 0
+			}
+
+		}
+	}
+	return slice, nil
 }
