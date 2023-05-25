@@ -150,7 +150,7 @@ func writeBytesToUint64Array(i, byteSize int, words []uint64, val []byte) error 
 		copy(buf[:], val[:byteSize])                  // Copy the bytes to an 8-byte buffer, zero-padding if necessary
 		words[i] = binary.LittleEndian.Uint64(buf[:]) // Convert the buffer to a uint64 value and store
 	default:
-		return errors.WithStack(InvalidBitsSizeError) // Return an error for unsupported byte sizes
+		return errors.New("invalid bits sizeInBytes") // Return an error for unsupported byte sizes
 	}
 
 	return nil

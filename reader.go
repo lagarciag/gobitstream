@@ -27,7 +27,7 @@ type Reader struct {
 func NewReader(sizeInBits int, in []byte) (wr *Reader, err error) {
 	if len(in) < BitsToBytesSize(sizeInBits) {
 		err = errors.Wrap(
-			InvalidBitsSizeError,
+			errors.New("invalid bits sizeInBytes"),
 			fmt.Sprintf("input byte slice is smaller than the specified size in bits: %d versus sizeInBits: %d",
 				len(in), sizeInBits))
 		return nil, errors.WithStack(err)
@@ -90,11 +90,11 @@ func (wr *Reader) Reset() {
 // It returns an error if the size is invalid.
 func (wr *Reader) checkNbitsSize(nBits int) error {
 	if nBits <= 0 {
-		err := InvalidBitsSizeError
+		err := errors.New("invalid bits sizeInBytes")
 		err = errors.Wrap(err, "nBits cannot be 0")
 		return errors.WithStack(err)
 	} else if nBits+wr.offset > wr.size {
-		err := InvalidBitsSizeError
+		err := errors.New("invalid bits sizeInBytes")
 		errWrap := fmt.Sprintf("nBits+wr.accOffset > wr.size, nBits: %d, accOffset: %d, wr.size: %d", nBits, wr.offset, wr.size)
 		err = errors.Wrap(err, errWrap)
 		return errors.WithStack(err)
@@ -218,7 +218,7 @@ func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, erro
 	}
 
 	if width == 0 || width > 64 {
-		err := InvalidBitsSizeError
+		err := errors.New("invalid bits sizeInBytes")
 		errors.Wrapf(err, "width must be between 1 and 64, got %d", width)
 		return 0, errors.WithStack(err)
 	}
