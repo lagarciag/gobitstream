@@ -3,6 +3,7 @@ package gobitstream_test
 import (
 	"github.com/juju/errors"
 	"github.com/lagarciag/gobitstream"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"pvsimflowtracking/tests"
 	"testing"
@@ -118,10 +119,6 @@ func TestRB(t *testing.T) {
 
 	a.Equal([]uint64{0xffffffffffffffff, 0xF}, wr.CurrentWord())
 
-	//t.Logf("current word: 0x%x", wr.CurrentWord())
-
-	//.Logf("bytes: %x", wr.Bytes())
-
 }
 
 func TestRB3(t *testing.T) {
@@ -148,4 +145,127 @@ func TestRB3(t *testing.T) {
 	t.Logf("current word: 0x%x", wr.CurrentWord())
 
 	t.Logf("bytes: %x", wr.Bytes())
+}
+
+func TestConvertBytesToWords(t *testing.T) {
+	t.Log(t.Name())
+	_, a := tests.InitTest(t)
+
+	tests := []struct {
+		nBits int
+		val   []byte
+		want  []uint64
+		err   error
+	}{
+		// Test case 1: nBits is 8, single byte input
+		{
+			nBits: 8,
+			val:   []byte{0xAB},
+			want:  []uint64{0xAB},
+			err:   nil,
+		},
+		// Test case 2: nBits is 16, two bytes input
+		{
+			nBits: 16,
+			val:   []byte{0xAB, 0xCD},
+			want:  []uint64{0xCDAB},
+			err:   nil,
+		},
+		// Test case 3: nBits is 24, three bytes input
+		{
+			nBits: 24,
+			val:   []byte{0xAB, 0xCD, 0xEF},
+			want:  []uint64{0xEFCDAB},
+			err:   nil,
+		},
+		// Test case 4: nBits is 32, four bytes input
+		{
+			nBits: 32,
+			val:   []byte{0xAB, 0xCD, 0xEF, 0x12},
+			want:  []uint64{0x12EFCDAB},
+			err:   nil,
+		},
+		// Test case 5: nBits is 64, eight bytes input
+		{
+			nBits: 64,
+			val:   []byte{0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56, 0x78, 0x9A},
+			want:  []uint64{0x9A78563412EFCDAB},
+			err:   nil,
+		},
+		// Test case 6: nBits is 16, one byte input (error: insufficient bytes)
+		{
+			nBits: 16,
+			val:   []byte{0xAB},
+			want:  nil,
+			err:   errors.New("insufficient bytes"),
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := gobitstream.ConvertBytesToWords(tt.nBits, tt.val)
+
+		if !a.Equal(got, tt.want) {
+			t.Errorf("ConvertBytesToWords(%d, %v) = %v, want %v", tt.nBits, tt.val, got, tt.want)
+		}
+		if tt.err != nil {
+			if !a.NotNil(err) {
+				t.Errorf("ConvertBytesToWords(%d, %v) error = %v, want %v", tt.nBits, tt.val, err, tt.err)
+			}
+		} else {
+			a.Nil(err)
+		}
+	}
+}
+
+func TestSetFieldToSlice(t *testing.T) {
+	t.Run("Should set field to slice without error", func(t *testing.T) {
+		dstSlice := []uint64{0, 0, 0}
+		field := []uint64{6, 7, 8}
+		width := uint64(192) // 64 bits for each field
+		offset := uint64(0)
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.NoError(t, err)
+		expectedSlice := []uint64{6, 7, 8}
+		assert.Equal(t, expectedSlice, dstSlice)
+	})
+
+	t.Run("Should return error if offset is out of range", func(t *testing.T) {
+		dstSlice := []uint64{1, 2, 3}
+		field := []uint64{6, 7, 8}
+		width := uint64(192)  // 64 bits for each field
+		offset := uint64(300) // out of range
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "is out of range")
+	})
+
+	t.Run("Should return error if width is larger than the size of the field", func(t *testing.T) {
+		dstSlice := []uint64{1, 2, 3}
+		field := []uint64{6, 7, 8}
+		width := uint64(300) // out of range
+		offset := uint64(0)
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.Error(t, err)
+		// Here, you should check if the error returned is the one you expect.
+		// Since I do not have the exact implementation of the function set64BitsFieldToWordSlice, I cannot provide the expected error.
+	})
+
+	t.Run("Should handle width and offset being zero appropriately", func(t *testing.T) {
+		dstSlice := []uint64{1, 2, 3}
+		field := []uint64{6, 7, 8}
+		width := uint64(0)
+		offset := uint64(0)
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.NoError(t, err)
+		expectedSlice := []uint64{1, 2, 3} // No changes since width is zero
+		assert.Equal(t, expectedSlice, dstSlice)
+	})
 }

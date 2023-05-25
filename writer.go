@@ -2,7 +2,6 @@ package gobitstream
 
 import (
 	"encoding/binary"
-	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +26,6 @@ func newWriter(totalBits int) *Writer {
 	wr.sizeInWords = bitsToWordSize(totalBits)
 	wr.dstWord = make([]uint64, wr.sizeInWords)
 	wr.sizeInBytes = BitsToBytesSize(totalBits)
-	//fmt.Println("sizeInBytes: ", wr.sizeInBytes)
 	return wr
 }
 
@@ -48,7 +46,6 @@ func (wr *Writer) Flush() (err error) {
 	sizeInBytes := len(wr.dstWord) * 8
 	wr.dst = make([]byte, sizeInBytes)
 	sizeInBytes = BitsToBytesSize(wr.offset)
-	//fmt.Printf("---> %X\n", wr.dstWord)
 	wr.dst, err = convertWordsToBytes(wr.dstWord, wr.dst, wr.offset, wr.isLittleEndian)
 	if err != nil {
 		err = errors.WithStack(err)
@@ -73,9 +70,15 @@ func convertWordsToBytes(words []uint64, outBuffer []byte, sizeInBits int, isLit
 	return outBuffer, nil
 }
 
-func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) (err error) {
+// WriteNbitsFromBytes writes a specified number of bits from a byte slice to the writer's destination.
+// The nBits parameter determines the number of bits to write.
+// The xval byte slice contains the input bytes to be written.
+// If the writer's endianness is not little endian, the byte order is reversed before writing.
+// The function returns an error if the byte size is invalid or if there was an error during the field assignment.
+func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) error {
 	var val []byte
 
+	// Reverse byte order if the writer's endianness is not little endian
 	if !wr.isLittleEndian {
 		val = make([]byte, len(xval))
 		_ = copy(val, xval)
@@ -83,40 +86,48 @@ func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) (err error) {
 	} else {
 		val = xval
 	}
-	byteSize := BitsToBytesSize(nBits)
 
-	if errx := checkByteSize(byteSize, len(val)); errx != nil {
-		return errors.WithStack(errx)
+	byteSize := BitsToBytesSize(nBits)
+	if err := checkByteSize(byteSize, len(val)); err != nil {
+		return errors.WithStack(err)
 	}
 
-	words, err := ConvertBytesToWords(nBits, val)
+	words, errConv := ConvertBytesToWords(nBits, val)
+	if errConv != nil {
+		return errors.WithStack(errConv)
+	}
 
-	//fmt.Printf("bytes to words: %X -- %d\n", words, nBits)
-
-	err = setFieldToSlice(wr.dstWord, words, uint64(nBits), uint64(wr.offset))
-
-	fmt.Printf("%d -- words: %X\n", nBits, words)
+	if errSet := SetFieldToSlice(wr.dstWord, words, uint64(nBits), uint64(wr.offset)); errSet != nil {
+		return errors.WithStack(errSet)
+	}
 
 	wr.offset += nBits
 	return nil
 }
 
-func (wr *Writer) WriteNbitsFromWord(nBits int, val uint64) (err error) {
+// WriteNbitsFromWord writes a specified number of bits from a uint64 value to the writer's destination.
+// The nBits parameter determines the number of bits to write.
+// The val parameter is the uint64 value to be written.
+// If the number of bits exceeds 64, the function returns an error.
+// The function performs a field assignment based on the current writer's offset.
+// It returns an error if there was an error during the field assignment.
+func (wr *Writer) WriteNbitsFromWord(nBits int, val uint64) error {
 	if nBits > 64 {
-		return InvalidBitsSizeError
+		return errors.New("invalid number of bits: exceeds 64")
 	}
 
+	var err error
+
 	if wr.offset >= 64 {
-		err = setFieldToSlice(wr.dstWord, []uint64{val}, uint64(nBits), uint64(wr.offset))
-		if err != nil {
-			return errors.WithStack(err)
-		}
+		err = SetFieldToSlice(wr.dstWord, []uint64{val}, uint64(nBits), uint64(wr.offset))
 	} else {
 		err = set64BitsFieldToWordSlice(wr.dstWord, val, uint64(nBits), uint64(wr.offset))
-		if err != nil {
-			return errors.WithStack(err)
-		}
 	}
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	wr.offset += nBits
 	return nil
 }
@@ -219,14 +230,19 @@ func computeLocalOffsets(offset uint64, i int) (localFieldOffset, fieldOffset ui
 	return
 }
 
-// setFieldToSlice sets a field (represented as a slice of uint64 values)
-// to a destination slice (dstSlice) starting at a given bit offset.
-// The total width of the field in bits is provided by the 'width' argument.
-// Note that if the total width of the field exceeds the length of dstSlice,
-// it may lead to a runtime panic.
-func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (err error) {
+func SetFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) error {
 	// Compute the number of uint64 values required to store the field
 	remainingWidth := width
+
+	// If width is zero, return nil immediately
+	if width == 0 {
+		return nil
+	}
+
+	// Check if width is larger than the size of the field
+	if width > uint64(len(field)*64) {
+		return errors.Errorf("width: %d is larger than the size of the field", width)
+	}
 
 	// Iterate over each word in the field
 	for i, fieldWord := range field {
@@ -239,13 +255,20 @@ func setFieldToSlice(dstSlice []uint64, field []uint64, width, offset uint64) (e
 		localDstSlice := dstSlice[fieldOffset:]
 		localDstWidth := computeDstWidth(remainingWidth, localFieldOffset, i)
 
-		err = set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset)
-		if err != nil {
+		if err := set64BitsFieldToWordSlice(localDstSlice, fieldWord, localDstWidth, localFieldOffset); err != nil {
 			return errors.Wrapf(err, "fieldOffset: %d, localDstWidth: %d, localFieldOffset: %d", fieldOffset, localDstWidth, localFieldOffset)
 		}
 
 		// Decrease remainingWidth only after successful operation
 		remainingWidth -= localDstWidth
+
+	}
+
+	if remainingWidth > 0 {
+		lastWord := field[len(field)-1]
+		calculateShift := 64 - remainingWidth
+		lastWord = lastWord >> calculateShift
+		dstSlice[len(dstSlice)-1] = dstSlice[len(dstSlice)-1] | lastWord
 	}
 
 	return nil

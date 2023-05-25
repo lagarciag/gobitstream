@@ -166,8 +166,6 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 		return nil, errors.WithStack(err)
 	}
 
-	fmt.Printf("%d - resultWords: %X", nBits, resultWords)
-
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
 		err := errors.New("invalid result assertion")

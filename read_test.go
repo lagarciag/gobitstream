@@ -131,6 +131,6 @@ func TestExtractAndSetBitsFromSlice2(t *testing.T) {
 
 	a.Equal(expected2, slice2)
 
-	err = setFieldToSlice(slice3, []uint64{expected}, width, offset)
+	err = SetFieldToSlice(slice3, []uint64{expected}, width, offset)
 	a.Equal(expected2, slice3)
 }
