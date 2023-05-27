@@ -128,7 +128,9 @@ func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
 		return res, err
 	}
-	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
+	resWords, err := getBitstreamFieldFromUint64Slice(wr.inWord, uint64(nBits), uint64(wr.offset))
+	fmt.Printf("resWords: %X\n", resWords)
+
 	wr.offset += nBits
 	return resWords, errors.WithStack(err)
 }
@@ -140,7 +142,7 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 		return res, errors.WithStack(err)
 	}
 
-	resWords, err := getFieldFromSlice(wr.resWordsBuffer, wr.inWord, uint64(nBits), uint64(wr.offset))
+	resWords, err := getBitstreamFieldFromUint64Slice(wr.inWord, uint64(nBits), uint64(wr.offset))
 
 	if err != nil {
 		err = errors.Wrapf(err, "width: %d, offset %d", nBits, wr.offset)
@@ -165,6 +167,8 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	const asdf = 117 % 8
+	fmt.Printf("resultWords %X %d\n", resultWords, nBits)
 
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
@@ -196,104 +200,188 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 
 func (wr *Reader) Words() []uint64 { return wr.inWord }
 
-// get64BitsFieldFromSlice extracts a range of bits from a slice of uint64s.
-//
-// The function takes a slice of uint64s, a width representing the number of bits to extract,
-// and an offset representing the position of the first bit to extract. The function returns
-// the extracted bits as a uint64 and an error.
-//
-// If the given width is 0 or greater than 64, or if the given offset is out of range for
-// the slice, the function returns an InvalidBitsSizeError or an OffsetOutOfRangeError,
-// respectively. Otherwise, the function extracts the relevant bits from the slice and returns
-// the result and no error.
-//
-// The function calculates the number of uint64s required to extract the full range of bits,
-// and uses bitwise operators to extract the relevant bits from those uint64s. The result is
-// returned as a uint64.
-func get64BitsFieldFromSlice(slice []uint64, width, offset uint64) (uint64, error) {
-	if offset > 64 {
-		err := InvalidOffsetError
-		errors.Wrapf(err, "offset must be less than 64, got %d", offset)
-		return 0, errors.WithStack(err)
+func get64BitsFieldFromSlice(inputFieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
+	if widthInBits > 64 {
+		return 0, errors.New("widthInBits cannot exceed 64")
 	}
 
-	if width == 0 || width > 64 {
-		err := errors.New("invalid bits sizeInBytes")
-		errors.Wrapf(err, "width must be between 1 and 64, got %d", width)
-		return 0, errors.WithStack(err)
-	}
-	if offset >= uint64(len(slice))*64 {
-		err := OffsetOutOfRangeError
-		errors.Wrapf(err, "offset: %d", offset)
-		return 0, errors.WithStack(err)
+	// Calculate which elements in the slice we need to consider
+	startElement := offsetInBits / 64
+	endElement := (offsetInBits + widthInBits - 1) / 64
+
+	if endElement >= uint64(len(inputFieldSlice)) {
+		return 0, errors.New("offset and width exceed the size of the inputFieldSlice")
 	}
 
-	// Initialize the result variable to 0
-	result := uint64(0)
-	words := (width + offset) / 64
-	if (width+offset)%64 != 0 {
-		words++
-	}
-	result = (slice[0] >> offset) & ((1 << width) - 1)
-	if words > 1 {
-		remainingBits := width - (64 - offset)
-		result |= slice[1] & ((1 << remainingBits) - 1) << (64 - offset)
+	// Calculate the local offset within the startElement
+	localOffset := offsetInBits % 64
+
+	// If the field is contained within a single slice element
+	if startElement == endElement {
+		return (inputFieldSlice[startElement] >> localOffset) & ((1 << widthInBits) - 1), nil
 	}
 
-	// Return the final result and no error
-	return result, nil
+	// If the field spans two elements in the slice
+	lowerBits := inputFieldSlice[startElement] >> localOffset
+	upperBits := inputFieldSlice[endElement] << (64 - localOffset)
+	return (lowerBits | upperBits) & ((1 << widthInBits) - 1), nil
 }
 
-// getFieldFromSlice returns a slice of uint64 that represents a field of specified width and offset
-// from the provided slice of uint64 values.
-//
-// The function takes an output slice to store the resulting field values, a slice of uint64 values,
-// a width representing the number of bits to extract, and an offset representing the position of
-// the first bit to extract. It returns the resulting field values as a slice of uint64 and an error.
-//
-// The function splits the extraction process into smaller steps. It calculates the necessary parameters
-// based on the width, such as the localWidth, remainingWidth, widthWords, and lastWordMask, which are used
-// to determine the number of iterations and mask the last word if necessary. It iterates over the widthWords
-// and extracts the relevant bits from the localSlice using the get64BitsFieldFromSlice function. It appends
-// the extracted field values to the output slice. If the widthWords is greater than 1, it performs a bitwise
-// left shift operation on the output slice. Finally, if the lastWordMask is nonzero, it applies the mask
-// to the last element of the output slice.
-//
-// If any error occurs during the extraction process, such as an invalid width or offset, it returns
-// an appropriate error with additional information. Otherwise, it returns the resulting field values
-// and no error.
-func getFieldFromSlice(out []uint64, slice []uint64, width, offset uint64) ([]uint64, error) {
-	wordOffset := offset / 64
-	localOffset := offset % 64
-	localSlice := slice[wordOffset:]
+func get64BitsFieldFromSlice77(inputFieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
+	if widthInBits > 64 {
+		return 0, errors.New("widthInBits cannot exceed 64")
+	}
 
-	localWidth, remainingWidth, widthWords, lastWordMask := calculateFieldParameters(width)
+	// Calculate which elements in the slice we need to consider
+	startElement := offsetInBits / 64
+	endElement := (offsetInBits + widthInBits - 1) / 64
 
-	out = out[:0]
+	if endElement >= uint64(len(inputFieldSlice)) {
+		return 0, errors.New("offset and width exceed the size of the inputFieldSlice")
+	}
+
+	// Calculate the local offset within the startElement
+	localOffset := offsetInBits % 64
+
+	// If the field is contained within a single slice element
+	if startElement == endElement {
+		return (inputFieldSlice[startElement] >> localOffset) & ((1 << widthInBits) - 1), nil
+	}
+	//slice := []uint64{0x0123456789abcdef, 0xfedcba9876543210}
+
+	// lower = 0x0123456789
+	// upper = 3210
+	// If the field spans two elements in the slice
+	lowerBitsMask := uint64((1<<(64-localOffset))-1) << localOffset
+
+	fmt.Printf("lowerBitsMask %X %X\n", lowerBitsMask, inputFieldSlice[startElement])
+
+	lowerBits := inputFieldSlice[startElement] & lowerBitsMask
+	upperBits := inputFieldSlice[endElement] & ((1 << localOffset) - 1)
+
+	fmt.Printf("lowerBits %X, upperBits %X\n", lowerBits, upperBits)
+
+	return (lowerBits | upperBits) & ((1 << widthInBits) - 1), nil
+}
+func get64BitsFieldFromSliceZ(inputFieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
+	if widthInBits > 64 {
+		return 0, errors.New("widthInBits cannot exceed 64")
+	}
+
+	// Calculate which elements in the slice we need to consider
+	startElement := offsetInBits / 64
+	endElement := (offsetInBits + widthInBits - 1) / 64
+
+	if endElement >= uint64(len(inputFieldSlice)) {
+		return 0, errors.New("offset and width exceed the size of the inputFieldSlice")
+	}
+
+	// Calculate the local offset within the startElement
+	localOffset := offsetInBits % 64
+
+	// If the field is contained within a single slice element
+	if startElement == endElement {
+		return (inputFieldSlice[startElement] >> localOffset) & ((1 << widthInBits) - 1), nil
+	}
+
+	// If the field spans two elements in the slice
+
+	lowerBits := (inputFieldSlice[startElement] >> localOffset) << (64 - localOffset)
+	upperBits := (inputFieldSlice[endElement] << (64 - localOffset)) >> localOffset
+
+	return (lowerBits | upperBits) & ((1 << widthInBits) - 1), nil
+}
+
+// getBitstreamFieldFromUint64Slice extracts a bitstream subfield from an input bitstream.
+// The input bitstream is represented as a slice of uint64, where each uint64 represents 64 bits of the bitstream,
+// starting from the least significant bit.
+// The function takes as arguments the input bitstream, the width of the subfield in bits, and the offset (in bits)
+// at which the subfield starts. The function returns the extracted subfield and any error encountered.
+//
+// inputBitstream: The input bitstream represented as a slice of uint64.
+// widthInBits: The width of the subfield to be extracted, in bits.
+// offsetInBits: The offset at which the subfield to be extracted starts, in bits.
+//
+// Returns a slice of uint64 representing the extracted subfield and an error. The error is non-nil if the requested
+// subfield cannot be extracted (i.e., if widthInBits + offsetInBits exceeds the length of the input bitstream).
+func getBitstreamFieldFromUint64SliceX(inputBitstream []uint64, widthInBits, offsetInBits uint64) (bitstreamSubField []uint64, err error) {
+	// Check if the subfield can be extracted from the input bitstream
+	if offsetInBits+widthInBits > uint64(len(inputBitstream))*64 {
+		return nil, errors.New("width and offset exceeds bitstream length")
+	}
+
+	// Initialize the slice for the subfield
+	bitstreamSubField = make([]uint64, ((offsetInBits+widthInBits+63)/64)-(offsetInBits/64))
+
+	// Calculate the start and end indices in the input bitstream slice
+	startIndex := offsetInBits / 64
+	endIndex := (offsetInBits + widthInBits) / 64
+
+	// Extract the lower bits of the subfield
+	if startIndex == endIndex {
+		// If the subfield is contained within one uint64, only extract the relevant bits
+		bitstreamSubField[0] = (inputBitstream[startIndex] >> (offsetInBits % 64)) & ((1 << widthInBits) - 1)
+	} else {
+		// If the subfield spans multiple uint64s, include all higher bits in the first uint64
+		bitstreamSubField[0] = inputBitstream[startIndex] >> (offsetInBits % 64)
+	}
+
+	// Extract the middle bits of the subfield
+	for i := startIndex + 1; i < endIndex; i++ {
+		bitstreamSubField[i-startIndex] = inputBitstream[i]
+	}
+
+	// Extract the upper bits of the subfield
+	if startIndex != endIndex && widthInBits%64 != 0 {
+		// If the subfield spans multiple uint64s and its width is not a multiple of 64,
+		// only include the relevant lower bits in the last uint64
+		bitstreamSubField[endIndex-startIndex] = inputBitstream[endIndex] & ((1 << (widthInBits % 64)) - 1)
+	}
+
+	return bitstreamSubField, nil
+}
+
+func getBitstreamFieldFromUint64Slice(inputBitStream []uint64, widthInBits, offsetInBits uint64) (resultSubBitstream []uint64, err error) {
+	wordOffset := offsetInBits / 64
+	localOffset := offsetInBits % 64
+	localSlice := inputBitStream[wordOffset:]
+
+	fmt.Printf("inputBitStream %X %d \n", inputBitStream, wordOffset)
+
+	fmt.Println("wordOffset", wordOffset, "localOffset", localOffset, "localSlice",
+		fmt.Sprintf("%X)", localSlice))
+
+	localWidth, remainingWidth, widthWords, lastWordMask := calculateFieldParameters(widthInBits)
+
+	fmt.Println("localWidth", localWidth)
+
+	wordsSize := sizeInWords(int(widthInBits))
+
+	resultSubBitstream = make([]uint64, 0, wordsSize)
 
 	for i := 0; i < widthWords; i++ {
 		localOffset = calculateLocalOffset(i, int(localOffset))
-		localWidth = calculateLocalWidth(remainingWidth, localWidth, i, int(width))
+		localWidth = calculateLocalWidth(remainingWidth, localWidth, i, int(widthInBits))
+
+		fmt.Println("xlocalOffset", localOffset, "xlocalWidth", localWidth)
 
 		field, err := get64BitsFieldFromSlice(localSlice, uint64(localWidth), localOffset)
 		if err != nil {
-			err = errors.Wrapf(err, "width: %d, offset: %d", width, offset)
+			err = errors.Wrapf(err, "widthInBits: %d, offsetInBits: %d", widthInBits, offsetInBits)
 			return nil, errors.WithStack(err)
 		}
 
-		remainingWidth -= localWidth
-		out = append(out, field)
-	}
+		fmt.Printf("local slice %x -- field %x \n", localSlice, field)
 
-	// if widthWords > 1 {
-	// 	out = ShiftSliceOfUint64Left(out, int(offset%64))
-	// }
+		remainingWidth -= localWidth
+		resultSubBitstream = append(resultSubBitstream, field)
+	}
 
 	if lastWordMask != 0 {
-		out[len(out)-1] &= uint64(lastWordMask)
+		resultSubBitstream[len(resultSubBitstream)-1] &= uint64(lastWordMask)
 	}
 
-	return out, nil
+	return resultSubBitstream, nil
 }
 
 func calculateFieldParameters(width uint64) (localWidth, remainingWidth, widthWords int, lastWordMask uint64) {
