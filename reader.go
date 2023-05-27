@@ -205,6 +205,10 @@ func get64BitsFieldFromSlice(inputFieldSlice []uint64, widthInBits, offsetInBits
 		return 0, errors.New("widthInBits cannot exceed 64")
 	}
 
+	if widthInBits == 0 {
+		return 0, errors.New("widthInBits cannot be 0")
+	}
+
 	// Calculate which elements in the slice we need to consider
 	startElement := offsetInBits / 64
 	endElement := (offsetInBits + widthInBits - 1) / 64
