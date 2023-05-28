@@ -253,7 +253,7 @@ func TestSetFieldToSlice(t *testing.T) {
 
 		assert.Error(t, err)
 		// Here, you should check if the error returned is the one you expect.
-		// Since I do not have the exact implementation of the function set64BitsFieldToWordSlice, I cannot provide the expected error.
+		// Since I do not have the exact implementation of the function Set64BitsFieldToWordSlice, I cannot provide the expected error.
 	})
 
 	t.Run("Should handle width and offset being zero appropriately", func(t *testing.T) {
