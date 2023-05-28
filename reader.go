@@ -129,8 +129,6 @@ func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 		return res, err
 	}
 	resWords, err := getBitstreamFieldFromUint64Slice(wr.inWord, uint64(nBits), uint64(wr.offset))
-	fmt.Printf("resWords: %X\n", resWords)
-
 	wr.offset += nBits
 	return resWords, errors.WithStack(err)
 }
@@ -168,7 +166,6 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 		return nil, errors.WithStack(err)
 	}
 	const asdf = 117 % 8
-	fmt.Printf("resultWords %X %d\n", resultWords, nBits)
 
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
@@ -205,14 +202,7 @@ func getBitstreamFieldFromUint64Slice(inputBitStream []uint64, widthInBits, offs
 	localOffset := offsetInBits % 64
 	localSlice := inputBitStream[wordOffset:]
 
-	fmt.Printf("inputBitStream %X %d \n", inputBitStream, wordOffset)
-
-	fmt.Println("wordOffset", wordOffset, "localOffset", localOffset, "localSlice",
-		fmt.Sprintf("%X)", localSlice))
-
 	localWidth, remainingWidth, widthWords, lastWordMask := calculateFieldParameters(widthInBits)
-
-	fmt.Println("localWidth", localWidth)
 
 	wordsSize := sizeInWords(int(widthInBits))
 
@@ -222,15 +212,11 @@ func getBitstreamFieldFromUint64Slice(inputBitStream []uint64, widthInBits, offs
 		localOffset = calculateLocalOffset(i, int(localOffset))
 		localWidth = calculateLocalWidth(remainingWidth, localWidth, i, int(widthInBits))
 
-		fmt.Println("xlocalOffset", localOffset, "xlocalWidth", localWidth)
-
 		field, err := Get64BitsFieldFromSlice(localSlice, uint64(localWidth), localOffset)
 		if err != nil {
 			err = errors.Wrapf(err, "widthInBits: %d, offsetInBits: %d", widthInBits, offsetInBits)
 			return nil, errors.WithStack(err)
 		}
-
-		fmt.Printf("local slice %x -- field %x \n", localSlice, field)
 
 		remainingWidth -= localWidth
 		resultSubBitstream = append(resultSubBitstream, field)

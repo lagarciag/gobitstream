@@ -1,7 +1,6 @@
 package gobitstream
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -47,15 +46,9 @@ func Set64BitsFieldToWordSlice(destinationField []uint64, inputField, widthInBit
 
 	inputField = inputField & ((1 << widthInBits) - 1)
 
-	fmt.Printf("destinationField: %X\n", destinationField)
-	fmt.Printf("inputField: %X\n", inputField)
-
 	// Calculate which elements in the slice we need to consider
 	startElement := offsetInBits / 64
 	endElement := (offsetInBits + widthInBits - 1) / 64
-
-	fmt.Printf("startElement: %d\n", startElement)
-	fmt.Printf("endElement: %d\n", endElement)
 
 	if endElement >= uint64(len(destinationField)) {
 		return errors.New("offset and width exceed the size of the destinationField")
@@ -63,8 +56,6 @@ func Set64BitsFieldToWordSlice(destinationField []uint64, inputField, widthInBit
 
 	// Calculate the local offset within the startElement
 	localOffset := offsetInBits % 64
-
-	fmt.Printf("localOffset: %d\n", localOffset)
 
 	if startElement == endElement {
 		// If the field is contained within a single slice element

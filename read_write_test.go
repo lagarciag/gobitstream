@@ -23,9 +23,6 @@ func TestReadWrite1(t *testing.T) {
 		wr := gobitstream.NewWriterLE(int(sizeInBits))
 		readBits := uint(rand.Intn(int(sizeInBits)))
 
-		//fmt.Printf("words in: %X\n", wr.Words())
-
-		//readBits := uint(129) //239
 		if readBits <= 64 {
 
 			read, err := rd.ReadNbitsUint64(int(readBits))
