@@ -1,0 +1,7 @@
+.PHONY: tests
+
+tests:
+	go test ./...
+
+fuzz:
+	make -C fuzz_test

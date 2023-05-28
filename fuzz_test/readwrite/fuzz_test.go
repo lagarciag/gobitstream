@@ -1,4 +1,4 @@
-package gobitstream_test
+package readwrite_test
 
 import (
 	"github.com/juju/errors"
@@ -11,7 +11,7 @@ func FuzzReadWrite(f *testing.F) {
 	sizeInBits := uint(9)
 	sizeInBytes := tests.SizeInBytes(sizeInBits)
 	in2 := make([]byte, sizeInBytes)
-	for i, _ := range in2 {
+	for i := range in2 {
 		in2[i] = 0xFF
 	}
 	readBits := 2
