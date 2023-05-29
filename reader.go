@@ -169,9 +169,8 @@ func (wr *Reader) ReadNbitsBytes(nBits int) (outBytes []byte, err error) {
 
 	// TODO: remove this
 	if len(resultWords) != sizeInWords(nBits) {
-		err := errors.New("invalid result assertion")
-		err = errors.Wrapf(err, "expected resultWords size: %d, got %d", sizeInWords(nBits), len(resultWords))
-		return nil, errors.WithStack(err)
+		err = errors.New("invalid result assertion")
+		return nil, errors.Wrapf(err, "expected resultWords size: %d, got %d", sizeInWords(nBits), len(resultWords))
 	}
 
 	wr.resBytesBuffer = wr.resBytesBuffer[:0]

@@ -1,7 +1,6 @@
 package gobitstream
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -20,11 +19,8 @@ func SetFieldToSlice(inSlice []uint64, field []uint64, widthInBits, offsetInBits
 
 	// Handle zero-widthInBits case: do nothing and return nil.
 	if widthInBits == 0 {
-		fmt.Println("widthInBits is 0")
 		return nil, errors.New("widthInBits is zero")
 	}
-
-	fmt.Printf("widthInBits: %d  offset: %d\n", widthInBits, offsetInBits)
 
 	if widthInBits <= 64 {
 		var err error
@@ -58,7 +54,6 @@ func SetFieldToSlice(inSlice []uint64, field []uint64, widthInBits, offsetInBits
 			}
 		}
 
-		fmt.Printf("localWidth: %d offsetInBits: %d len: %d %d\n", localWidth, offsetInBits, len(field), i)
 		var err error
 		dstSlice, err = Set64BitsFieldToSlice(dstSlice, field[i], uint64(localWidth), offsetInBits)
 		if err != nil {

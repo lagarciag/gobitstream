@@ -57,9 +57,8 @@ func TestReadWrite1(t *testing.T) {
 		} else {
 			read, err := rd.ReadNbitsBytes(int(readBits))
 			if !a.Nil(err) {
+				t.Errorf("error %+v", err)
 				t.Errorf("reading bits: %d", readBits)
-				t.Error(err.Error())
-				t.Errorf(errors.ErrorStack(err))
 				t.FailNow()
 			}
 
