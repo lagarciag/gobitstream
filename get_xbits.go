@@ -36,7 +36,7 @@ func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (r
 
 	for i := range resultSubBitstream {
 		var localWidth int
-		if remainingBits > 64 {
+		if remainingBits >= 64 {
 			remainingBits -= 64
 			localWidth = 64
 		} else {
@@ -46,6 +46,7 @@ func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (r
 		if localWidth == 0 {
 			continue
 		}
+
 		resultSubBitstream[i], err = Get64BitsFieldFromSlice(fieldSlice, uint64(localWidth), offsetInBits+uint64(i*64))
 		if err != nil {
 			return nil, err

@@ -415,10 +415,10 @@ func TestSet64BitsFieldToWordSlice2(t *testing.T) {
 
 func TestExtractAndSetSliceBitsFromSliceRandom2(t *testing.T) {
 	_, a, rnd := tests.InitTest(t)
-	rnd.Seed(1685376042)
+	//rnd.Seed(1685376042)
 	const round = 1000
-	//sliceSize := rnd.Intn(1) + 2
-	const sliceSize = 3
+	sliceSize := rnd.Intn(100) + 2
+
 	for i := 0; i < round; i++ {
 
 		initialSlice := make([]uint64, sliceSize)
