@@ -1,10 +1,15 @@
 package gobitstream
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 )
 
-func Get64BitsFieldFromSlice(inputFieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
+func Get64BitsFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
+
+	inputFieldSlice := make([]uint64, len(fieldSlice))
+	copy(inputFieldSlice, fieldSlice)
+
 	if widthInBits > 64 {
 		return 0, errors.New("widthInBits cannot exceed 64")
 	}
@@ -35,13 +40,17 @@ func Get64BitsFieldFromSlice(inputFieldSlice []uint64, widthInBits, offsetInBits
 	upperBits := inputFieldSlice[endElement] << (64 - localOffset)
 	return (lowerBits | upperBits) & ((1 << widthInBits) - 1), nil
 }
-func Set64BitsFieldToWordSlice(destinationField []uint64, inputField, widthInBits, offsetInBits uint64) (err error) {
+func Set64BitsFieldToWordSlice(inputFieldField []uint64, inputField, widthInBits, offsetInBits uint64) (result []uint64, err error) {
+
+	result = make([]uint64, len(inputFieldField))
+	copy(result, inputFieldField)
+
 	if widthInBits > 64 {
-		return errors.New("widthInBits cannot exceed 64")
+		return nil, err
 	}
 
 	if widthInBits == 0 {
-		return errors.New("widthInBits cannot be 0")
+		return nil, err
 	}
 
 	inputField = inputField & ((1 << widthInBits) - 1)
@@ -50,9 +59,11 @@ func Set64BitsFieldToWordSlice(destinationField []uint64, inputField, widthInBit
 	startElement := offsetInBits / 64
 	endElement := (offsetInBits + widthInBits - 1) / 64
 
-	if endElement >= uint64(len(destinationField)) {
-		return errors.New("offset and width exceed the size of the destinationField")
+	if endElement >= uint64(len(result)) {
+		return nil, errors.New("offset and width exceed the size of the inputFieldSlice")
 	}
+
+	fmt.Println("startElement", startElement, "endElement", endElement)
 
 	// Calculate the local offset within the startElement
 	localOffset := offsetInBits % 64
@@ -61,17 +72,25 @@ func Set64BitsFieldToWordSlice(destinationField []uint64, inputField, widthInBit
 		// If the field is contained within a single slice element
 		// Create a mask to preserve the bits outside of the field we're setting
 		mask := uint64(^(((1 << widthInBits) - 1) << localOffset))
-		destinationField[startElement] = (destinationField[startElement] & mask) | (inputField << localOffset)
+		result[startElement] = (result[startElement] & mask) | (inputField << localOffset)
 	} else {
 		// If the field spans two elements in the slice
 		// Create masks to preserve the bits outside of the field we're setting in both elements
-		lowerMask := uint64(^((1 << localOffset) - 1))
-		upperMask := uint64((1 << (64 - localOffset)) - 1)
-		destinationField[startElement] = (destinationField[startElement] & lowerMask) | (inputField << localOffset)
-		destinationField[endElement] = (destinationField[endElement] & upperMask) | (inputField >> (64 - localOffset))
+		lowerMask := uint64((1 << localOffset) - 1)
+		upperMask := uint64(^((1 << (64 - localOffset)) - 1))
+
+		fmt.Printf("lowerMask: %X\n", lowerMask)
+		fmt.Printf("upperMask: %X\n", upperMask)
+		fmt.Printf("result: %X\n", result[endElement])
+
+		fmt.Printf("result: %x\n", result[startElement])
+
+		result[startElement] = (result[startElement] & lowerMask) | (inputField << localOffset)
+
+		result[endElement] = (result[endElement] & upperMask) | (inputField >> (64 - localOffset))
 	}
 
-	return nil
+	return result, err
 }
 
 ///----------------------------------

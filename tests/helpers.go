@@ -3,14 +3,19 @@ package tests
 import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"math/rand"
 	"pvsimflowtracking/log"
 	"testing"
+	"time"
 )
 
-func InitTest(t *testing.T) (l *zap.Logger, a *assert.Assertions) {
+func InitTest(t *testing.T) (l *zap.Logger, a *assert.Assertions, rnd *rand.Rand) {
+	seed := int64(time.Now().Unix())
+	rnd = rand.New(rand.NewSource(int64(seed)))
+	t.Log("seed: ", seed)
 	t.Logf("name: %s", t.Name())
 	a = assert.New(t)
-	return log.NewLogger(), a
+	return log.NewLogger(), a, rnd
 }
 
 func InitTest2(t *testing.T) (l *zap.Logger, a *assert.Assertions) {

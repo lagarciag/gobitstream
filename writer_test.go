@@ -3,7 +3,6 @@ package gobitstream_test
 import (
 	"github.com/juju/errors"
 	"github.com/lagarciag/gobitstream"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"pvsimflowtracking/tests"
 	"testing"
@@ -215,57 +214,4 @@ func TestConvertBytesToWords(t *testing.T) {
 			a.Nil(err)
 		}
 	}
-}
-
-func TestSetFieldToSlice(t *testing.T) {
-	t.Run("Should set field to slice without error", func(t *testing.T) {
-		dstSlice := []uint64{0, 0, 0}
-		field := []uint64{6, 7, 8}
-		width := uint64(192) // 64 bits for each field
-		offset := uint64(0)
-
-		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
-
-		assert.NoError(t, err)
-		expectedSlice := []uint64{6, 7, 8}
-		assert.Equal(t, expectedSlice, dstSlice)
-	})
-
-	t.Run("Should return error if offset is out of range", func(t *testing.T) {
-		dstSlice := []uint64{1, 2, 3}
-		field := []uint64{6, 7, 8}
-		width := uint64(192)  // 64 bits for each field
-		offset := uint64(300) // out of range
-
-		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "is out of range")
-	})
-
-	t.Run("Should return error if width is larger than the size of the field", func(t *testing.T) {
-		dstSlice := []uint64{1, 2, 3}
-		field := []uint64{6, 7, 8}
-		width := uint64(300) // out of range
-		offset := uint64(0)
-
-		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
-
-		assert.Error(t, err)
-		// Here, you should check if the error returned is the one you expect.
-		// Since I do not have the exact implementation of the function Set64BitsFieldToWordSlice, I cannot provide the expected error.
-	})
-
-	t.Run("Should handle width and offset being zero appropriately", func(t *testing.T) {
-		dstSlice := []uint64{1, 2, 3}
-		field := []uint64{6, 7, 8}
-		width := uint64(0)
-		offset := uint64(0)
-
-		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
-
-		assert.NoError(t, err)
-		expectedSlice := []uint64{1, 2, 3} // No changes since width is zero
-		assert.Equal(t, expectedSlice, dstSlice)
-	})
 }

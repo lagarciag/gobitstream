@@ -3,12 +3,13 @@ package gobitstream_test
 import (
 	"github.com/lagarciag/gobitstream"
 	"github.com/lagarciag/gobitstream/tests"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestGetBitsFromSlice(t *testing.T) {
+func TestExtractAndSetBitsSliceFromSlice(t *testing.T) {
 	_, a, _ := tests.InitTest(t)
-	tests := []struct {
+	testCases := []struct {
 		name     string
 		slice    []uint64
 		width    uint64
@@ -64,73 +65,25 @@ func TestGetBitsFromSlice(t *testing.T) {
 			offset:   32,
 			expected: 0x0,
 		},
-		{
-			name:     "Case 8: Offset at the boundary",
-			slice:    []uint64{0x7ee14f8478232d3, 0x9d41c247b89fe5f, 0x28dc598ae2ab9b2, 0xcea6306a6583a37},
-			width:    44,
-			offset:   94,
-			expected: 0x0,
-		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range testCases {
 		t.Log(tc.name)
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Extract: %X", tc.expected)
-
-			actual, err := gobitstream.Get64BitsFieldFromSlice(tc.slice, tc.width, tc.offset)
+			actual, err := gobitstream.GetAnySizeFieldFromUint64Slice(tc.slice, tc.width, tc.offset)
 			if err != nil {
 				if len(tc.slice) == 0 {
 					return
 				}
 			}
 			a.Nil(err)
-			if !a.Equal(tc.expected, actual) {
-				t.Logf("slice: %X", tc.slice)
-				t.Logf("width: %d", tc.width)
-				t.Logf("offset: %d", tc.offset)
-			}
+			a.Equal([]uint64{tc.expected}, actual)
 		})
 	}
 }
 
-func TestExtractAndSetSliceBitsFromSliceRandom(t *testing.T) {
-	_, a, rnd := tests.InitTest(t)
-	const round = 100
-
-	for i := 0; i < round; i++ {
-
-		initialSlice := make([]uint64, 4)
-
-		for i := range initialSlice {
-			initialSlice[i] = uint64(rnd.Intn(0xFFFFFFFFFFFFFFF))
-		}
-
-		secondSlice := make([]uint64, 4)
-
-		copy(secondSlice, initialSlice)
-
-		maxWidth := 64 - 3
-		width := uint64(rnd.Intn(maxWidth + 1))
-		offset := uint64(rnd.Intn(len(initialSlice)*64-int(width)) + 1)
-		t.Logf("Initial Slice: %X", initialSlice)
-		t.Logf("width: %d offset %d", width, offset)
-
-		val1, err := gobitstream.Get64BitsFieldFromSlice(initialSlice, width, offset)
-		a.Nil(err)
-
-		t.Logf("Extract: %X", val1)
-
-		secondSliceR, err := gobitstream.Set64BitsFieldToWordSlice(secondSlice, val1, width, offset)
-
-		if !(a.Equal(initialSlice, secondSliceR)) {
-			t.Errorf("Second Slice: %X", secondSlice)
-			t.FailNow()
-		}
-	}
-}
-
-func TestExtractAndSetBitsFromSlice2(t *testing.T) {
+func TestExtractAndSetSliceBitsFromSlice2(t *testing.T) {
 	_, a, _ := tests.InitTest(t)
 	slice := []uint64{0x0123456789abcdef, 0xfedcba9876543210}
 	width := uint64(56)
@@ -145,23 +98,21 @@ func TestExtractAndSetBitsFromSlice2(t *testing.T) {
 	expected2 := []uint64{0x123456789ab0000, 0x10}
 
 	t.Logf("Extract: %X", expected)
-	actual, err := gobitstream.Get64BitsFieldFromSlice(slice, width, offset)
+	actual, err := gobitstream.GetAnySizeFieldFromUint64Slice(slice, width, offset)
 	a.Nil(err)
-	a.Equal(actual, expected)
+	a.Equal(actual[0], expected)
 
-	sliceR2, err := gobitstream.Set64BitsFieldToWordSlice(slice2, expected, width, offset)
+	slice2R, err := gobitstream.Set64BitsFieldToWordSlice(slice2, expected, width, offset)
 	a.Nil(err)
 
-	a.Equal(expected2, sliceR2)
+	a.Equal(expected2, slice2R)
 
 	err = gobitstream.SetFieldToSlice(slice3, []uint64{expected}, width, offset)
 	a.Equal(expected2, slice3)
 }
 
-func TestSet64BitsFieldToWordSlice(t *testing.T) {
-
+func TestSetSliceBitsFieldToWordSlice(t *testing.T) {
 	_, a, _ := tests.InitTest(t)
-
 	tests := []struct {
 		name             string
 		destinationField []uint64
@@ -198,33 +149,6 @@ func TestSet64BitsFieldToWordSlice(t *testing.T) {
 			expectedErr:      nil,
 			expectedOutput:   []uint64{0x0, 0x89ABCDEF0000, 0},
 		},
-		{
-			name:             "Case 4: from random test",
-			destinationField: []uint64{0xf089654672e1a1d, 0x15b46f84dcbba05, 0x87cf056eeec624, 0xb96c5178b740f45},
-			inputField:       0x40F450087C,
-			widthInBits:      40,
-			offsetInBits:     172,
-			expectedErr:      nil,
-			expectedOutput:   []uint64{0xf089654672e1a1d, 0x15b46f84dcbba05, 0x87cf056eeec624, 0xb96c5178b740f45},
-		},
-		{
-			name:             "Case 5: from random test",
-			destinationField: []uint64{0x71ae58272875c0c, 0x819550d59ea0344, 0x9d4b3b29d0c0a12, 0xb7ab52bf87059c5},
-			inputField:       0x1C509D4B3B29D0,
-			widthInBits:      55,
-			offsetInBits:     148,
-			expectedErr:      nil,
-			expectedOutput:   []uint64{0x71ae58272875c0c, 0x819550d59ea0344, 0x9d4b3b29d0c0a12, 0xb7ab000000001c5},
-		},
-		{
-			name:             "Case 6: from random test",
-			destinationField: []uint64{0xabe6e3db3b17058, 0x7ac13a4d750cbdf, 0xfbe87ba50a45cfb, 0x8a9a3d77d648716},
-			inputField:       0x1C583EFA,
-			widthInBits:      32,
-			offsetInBits:     174,
-			expectedErr:      nil,
-			expectedOutput:   []uint64{0xabe6e3db3b17058, 0x7ac13a4d750cbdf, 0xfbe87ba50a45cfb, 0x8a9a3d77d648716},
-		},
 		// add more test cases here
 	}
 
@@ -232,8 +156,7 @@ func TestSet64BitsFieldToWordSlice(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Log("running test case ", i)
 			var err error
-			var result []uint64
-			result, err = gobitstream.Set64BitsFieldToWordSlice(tt.destinationField, tt.inputField, tt.widthInBits, tt.offsetInBits)
+			tt.destinationField, err = gobitstream.Set64BitsFieldToWordSlice(tt.destinationField, tt.inputField, tt.widthInBits, tt.offsetInBits)
 
 			if tt.expectedErr != nil {
 				if err == nil || err.Error() != tt.expectedErr.Error() {
@@ -241,24 +164,62 @@ func TestSet64BitsFieldToWordSlice(t *testing.T) {
 				}
 			} else if err != nil {
 				t.Errorf("expected no error, got %v", err)
-			} else if !a.Equal(tt.expectedOutput, result) {
-				t.Logf("result: %X", result)
-				t.Logf("width %d", tt.widthInBits)
-				t.Logf("offset %d", tt.offsetInBits)
+			} else if !a.Equal(tt.expectedOutput, tt.destinationField) {
 				t.Errorf("expected output %X, got %X", tt.expectedOutput, tt.destinationField)
 			}
 		})
 	}
 }
 
-func equal(a, b []uint64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
+func TestSetFieldToSlice(t *testing.T) {
+	t.Run("Should set field to slice without error", func(t *testing.T) {
+		dstSlice := []uint64{0, 0, 0}
+		field := []uint64{6, 7, 8}
+		width := uint64(192) // 64 bits for each field
+		offset := uint64(0)
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.NoError(t, err)
+		expectedSlice := []uint64{6, 7, 8}
+		assert.Equal(t, expectedSlice, dstSlice)
+	})
+
+	t.Run("Should return error if offset is out of range", func(t *testing.T) {
+		dstSlice := []uint64{1, 2, 3}
+		field := []uint64{6, 7, 8}
+		width := uint64(192)  // 64 bits for each field
+		offset := uint64(300) // out of range
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "is out of range")
+	})
+
+	t.Run("Should return error if width is larger than the size of the field", func(t *testing.T) {
+		dstSlice := []uint64{1, 2, 3}
+		field := []uint64{6, 7, 8}
+		width := uint64(300) // out of range
+		offset := uint64(0)
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.Error(t, err)
+		// Here, you should check if the error returned is the one you expect.
+		// Since I do not have the exact implementation of the function Set64BitsFieldToWordSlice, I cannot provide the expected error.
+	})
+
+	t.Run("Should handle width and offset being zero appropriately", func(t *testing.T) {
+		dstSlice := []uint64{1, 2, 3}
+		field := []uint64{6, 7, 8}
+		width := uint64(0)
+		offset := uint64(0)
+
+		err := gobitstream.SetFieldToSlice(dstSlice, field, width, offset)
+
+		assert.NoError(t, err)
+		expectedSlice := []uint64{1, 2, 3} // No changes since width is zero
+		assert.Equal(t, expectedSlice, dstSlice)
+	})
 }

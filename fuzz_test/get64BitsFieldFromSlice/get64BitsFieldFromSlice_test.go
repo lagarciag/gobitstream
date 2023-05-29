@@ -44,7 +44,7 @@ func FuzzGetAndSetBits(f *testing.F) {
 		//	t.Fatalf("expected %v, but got %v", expectedField, field)
 		//}
 
-		err = gobitstream.Set64BitsFieldToWordSlice(inputSlice, field, widthInBits, offsetInBits)
+		inputSlice, err = gobitstream.Set64BitsFieldToWordSlice(inputSlice, field, widthInBits, offsetInBits)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
