@@ -1,7 +1,6 @@
 package gobitstream
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -37,8 +36,13 @@ func Get64BitsFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint
 
 	// If the field spans two elements in the slice
 	lowerBits := inputFieldSlice[startElement] >> localOffset
+
 	upperBits := inputFieldSlice[endElement] << (64 - localOffset)
-	return (lowerBits | upperBits) & ((1 << widthInBits) - 1), nil
+
+	outputField = lowerBits | upperBits
+
+	outputField = outputField & ((1 << widthInBits) - 1)
+	return outputField, nil
 }
 func Set64BitsFieldToWordSlice(inputFieldField []uint64, inputField, widthInBits, offsetInBits uint64) (result []uint64, err error) {
 
@@ -63,8 +67,6 @@ func Set64BitsFieldToWordSlice(inputFieldField []uint64, inputField, widthInBits
 		return nil, errors.New("offset and width exceed the size of the inputFieldSlice")
 	}
 
-	fmt.Println("startElement", startElement, "endElement", endElement)
-
 	// Calculate the local offset within the startElement
 	localOffset := offsetInBits % 64
 
@@ -77,17 +79,15 @@ func Set64BitsFieldToWordSlice(inputFieldField []uint64, inputField, widthInBits
 		// If the field spans two elements in the slice
 		// Create masks to preserve the bits outside of the field we're setting in both elements
 		lowerMask := uint64((1 << localOffset) - 1)
-		upperMask := uint64(^((1 << (64 - localOffset)) - 1))
+		upperMask := uint64(^((1 << (widthInBits - (64 - localOffset))) - 1))
 
-		fmt.Printf("lowerMask: %X\n", lowerMask)
-		fmt.Printf("upperMask: %X\n", upperMask)
-		fmt.Printf("result: %X\n", result[endElement])
+		lowerSiftedInputField := inputField << localOffset
 
-		fmt.Printf("result: %x\n", result[startElement])
+		result[startElement] = (result[startElement] & lowerMask) | lowerSiftedInputField
 
-		result[startElement] = (result[startElement] & lowerMask) | (inputField << localOffset)
+		upperShiftedInputField := inputField >> (64 - localOffset)
 
-		result[endElement] = (result[endElement] & upperMask) | (inputField >> (64 - localOffset))
+		result[endElement] = (result[endElement] & upperMask) | upperShiftedInputField
 	}
 
 	return result, err
