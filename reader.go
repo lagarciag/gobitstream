@@ -128,7 +128,7 @@ func (wr *Reader) ReadNbitsWords64(nBits int) (res []uint64, err error) {
 	if err = wr.checkNbitsSize(nBits); err != nil {
 		return res, err
 	}
-	resWords, err := GetAnySizeFieldFromUint64Slice(wr.inWord, uint64(nBits), uint64(wr.offset))
+	resWords, err := GetFieldFromSlice(wr.inWord, uint64(nBits), uint64(wr.offset))
 	wr.offset += nBits
 	return resWords, errors.WithStack(err)
 }
@@ -140,7 +140,7 @@ func (wr *Reader) ReadNbitsUint64(nBits int) (res uint64, err error) {
 		return res, errors.WithStack(err)
 	}
 
-	resWords, err := GetAnySizeFieldFromUint64Slice(wr.inWord, uint64(nBits), uint64(wr.offset))
+	resWords, err := GetFieldFromSlice(wr.inWord, uint64(nBits), uint64(wr.offset))
 
 	if err != nil {
 		err = errors.Wrapf(err, "width: %d, offset %d", nBits, wr.offset)

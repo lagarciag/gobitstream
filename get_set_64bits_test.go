@@ -170,7 +170,7 @@ func TestSet64BitsFieldToWordSlice(t *testing.T) {
 			t.Log("running test case ", i)
 			var err error
 			var result []uint64
-			result, err = gobitstream.Set64BitsFieldToWordSlice(tt.destinationField, tt.inputField, tt.widthInBits, tt.offsetInBits)
+			result, err = gobitstream.Set64BitsFieldToSlice(tt.destinationField, tt.inputField, tt.widthInBits, tt.offsetInBits)
 
 			if tt.expectedErr != nil {
 				if err == nil || err.Error() != tt.expectedErr.Error() {
@@ -219,7 +219,7 @@ func TestExtractAndSetSliceBitsFromSliceRandom(t *testing.T) {
 
 		//t.Logf("Extract: %X", val1)
 
-		secondSliceR, err := gobitstream.Set64BitsFieldToWordSlice(secondSlice, val1, width, offset)
+		secondSliceR, err := gobitstream.Set64BitsFieldToSlice(secondSlice, val1, width, offset)
 
 		if !(a.Equal(initialSlice, secondSliceR)) {
 			t.Logf("width: %d", width)

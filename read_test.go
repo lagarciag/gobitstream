@@ -77,7 +77,7 @@ func TestExtractBitsFromSliceGreater64(t *testing.T) {
 	reverseSlice(compareBytes)
 	size := sizeInWords(int(width))
 
-	actual, err := GetAnySizeFieldFromUint64Slice(slice, width, offset)
+	actual, err := GetFieldFromSlice(slice, width, offset)
 	if !a.Nil(err) {
 		t.Error(err.Error())
 		t.Error(errors.ErrorStack(err))
@@ -103,7 +103,7 @@ func TestGetFieldFromSlice(t *testing.T) {
 	width = uint64(64)
 	offset = uint64(64)
 
-	out, err := GetAnySizeFieldFromUint64Slice(slice, width, offset)
+	out, err := GetFieldFromSlice(slice, width, offset)
 	a.Nil(err)
 	expected := []uint64{0x99AABBCCDDEEFF00}
 	a.Equal(expected, out)
@@ -114,7 +114,7 @@ func TestGetFieldFromSlice(t *testing.T) {
 	//
 	//t.Logf("Extract: %X", slice[0])
 	//
-	//out, err = GetAnySizeFieldFromUint64Slice(slice, width, offset)
+	//out, err = GetFieldFromSlice(slice, width, offset)
 	//a.Nil(err)
 	//expected = []uint64{0x55667788}
 	//a.Equal(expected, out)
@@ -125,7 +125,7 @@ func TestGetFieldFromSlice(t *testing.T) {
 	//
 	//t.Logf("Extract: %X", slice[0])
 	//
-	//out, err = GetAnySizeFieldFromUint64Slice(slice, width, offset)
+	//out, err = GetFieldFromSlice(slice, width, offset)
 	//a.Nil(err)
 	//expected = []uint64{0x22222222}
 	//a.Equal(expected, out)
@@ -136,7 +136,7 @@ func TestGetFieldFromSlice(t *testing.T) {
 
 	t.Logf("Extract: %X", slice[0])
 
-	out, err = GetAnySizeFieldFromUint64Slice(slice, width, offset)
+	out, err = GetFieldFromSlice(slice, width, offset)
 	a.Nil(err)
 	expected = []uint64{0x4444444411111111}
 	a.Equal(expected, out)
@@ -145,7 +145,7 @@ func TestGetFieldFromSlice(t *testing.T) {
 	width = uint64(40)
 	offset = uint64(20)
 
-	out, err = GetAnySizeFieldFromUint64Slice(slice, width, offset)
+	out, err = GetFieldFromSlice(slice, width, offset)
 	a.Nil(err)
 	expected = []uint64{0x1223344556}
 	a.Equal(expected, out)

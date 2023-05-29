@@ -97,7 +97,8 @@ func (wr *Writer) WriteNbitsFromBytes(nBits int, xval []byte) error {
 		return errors.WithStack(errConv)
 	}
 
-	if errSet := SetFieldToSlice(wr.dstWord, words, uint64(nBits), uint64(wr.offset)); errSet != nil {
+	var errSet error
+	if wr.dstWord, errSet = SetFieldToSlice(wr.dstWord, words, uint64(nBits), uint64(wr.offset)); errSet != nil {
 		return errors.WithStack(errSet)
 	}
 
@@ -119,9 +120,9 @@ func (wr *Writer) WriteNbitsFromWord(nBits int, val uint64) error {
 	var err error
 
 	if wr.offset >= 64 {
-		err = SetFieldToSlice(wr.dstWord, []uint64{val}, uint64(nBits), uint64(wr.offset))
+		wr.dstWord, err = SetFieldToSlice(wr.dstWord, []uint64{val}, uint64(nBits), uint64(wr.offset))
 	} else {
-		wr.dstWord, err = Set64BitsFieldToWordSlice(wr.dstWord, val, uint64(nBits), uint64(wr.offset))
+		wr.dstWord, err = Set64BitsFieldToSlice(wr.dstWord, val, uint64(nBits), uint64(wr.offset))
 	}
 	if err != nil {
 		return errors.WithStack(err)
