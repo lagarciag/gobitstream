@@ -234,3 +234,23 @@ func TestExtractAndSetSliceBitsFromSliceRandom(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkGet64BitsFieldFromSlice(b *testing.B) {
+	bits := make([]uint64, 128)
+	for i := 0; i < b.N; i++ {
+		_, err := gobitstream.Get64BitsFieldFromSlice(bits, 64, 32)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSet64BitsFieldToSlice(b *testing.B) {
+	bits := make([]uint64, 128)
+	for i := 0; i < b.N; i++ {
+		_, err := gobitstream.Set64BitsFieldToSlice(bits, 64, 64, 32)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
