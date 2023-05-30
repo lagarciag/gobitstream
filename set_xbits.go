@@ -4,9 +4,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SetFieldToSlice(inSlice []uint64, field []uint64, widthInBits, offsetInBits uint64) ([]uint64, error) {
-	dstSlice := make([]uint64, len(inSlice))
-	copy(dstSlice, inSlice)
+func SetFieldToSlice(dstSlice []uint64, field []uint64, widthInBits, offsetInBits uint64) ([]uint64, error) {
+	//dstSlice := make([]uint64, len(inSlice))
+	//copy(dstSlice, inSlice)
 	// Check if offsetInBits is larger than the size of dstSlice in bits.
 	if offsetInBits > uint64(len(dstSlice)*64) {
 		return nil, errors.New("offsetInBits is out of range")
@@ -37,7 +37,7 @@ func SetFieldToSlice(inSlice []uint64, field []uint64, widthInBits, offsetInBits
 		var localWidth int
 		// three cases:
 		if i < len(field)-1 {
-			if remainingWidth > 64 { //<<<<<
+			if remainingWidth > 64 {
 				localWidth = 64
 				remainingWidth -= 64
 			} else {

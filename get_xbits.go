@@ -6,8 +6,8 @@ import (
 
 func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (resultSubBitstream []uint64, err error) {
 
-	inputFieldSlice := make([]uint64, len(fieldSlice))
-	copy(inputFieldSlice, fieldSlice)
+	//inputFieldSlice := make([]uint64, len(fieldSlice))
+	//copy(inputFieldSlice, fieldSlice)
 
 	if widthInBits == 0 {
 		return nil, errors.New("widthInBits cannot be 0")
@@ -16,7 +16,7 @@ func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (r
 	// Calculate which elements in the slice we need to consider
 	endElement := (offsetInBits + widthInBits - 1) / 64
 
-	if endElement >= uint64(len(inputFieldSlice)) {
+	if endElement >= uint64(len(fieldSlice)) {
 		return nil, errors.New("offset and width exceed the size of the inputFieldSlice")
 
 	}
@@ -28,7 +28,7 @@ func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (r
 	resultSubBitstream = make([]uint64, sliceWords)
 
 	if widthInBits <= 64 {
-		resultSubBitstream[0], err = Get64BitsFieldFromSlice(inputFieldSlice, widthInBits, offsetInBits)
+		resultSubBitstream[0], err = Get64BitsFieldFromSlice(fieldSlice, widthInBits, offsetInBits)
 		return resultSubBitstream, err
 	}
 
