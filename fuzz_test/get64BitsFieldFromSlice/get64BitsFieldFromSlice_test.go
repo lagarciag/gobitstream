@@ -32,7 +32,7 @@ func FuzzGetAndSetBits(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, input1, input2, input3, input4, input5, widthInBits, offsetInBits, expectedField uint64) {
 		inputSlice := []uint64{input1, input2, input3, input4, input5}
-		field, err := gobitstream.Get64BitsFieldFromSlice(nil, inputSlice, widthInBits, offsetInBits)
+		field, err := gobitstream.Get64BitsFieldFromSlice(inputSlice, widthInBits, offsetInBits)
 		if err != nil {
 			if widthInBits == 0 || widthInBits > 64 || (offsetInBits+widthInBits) > 64 {
 				return
@@ -49,7 +49,7 @@ func FuzzGetAndSetBits(f *testing.F) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		result, err := gobitstream.Get64BitsFieldFromSlice(nil, inputSlice, widthInBits, offsetInBits)
+		result, err := gobitstream.Get64BitsFieldFromSlice(inputSlice, widthInBits, offsetInBits)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

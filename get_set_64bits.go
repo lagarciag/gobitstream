@@ -8,7 +8,8 @@ import (
 // This function is used when you want to extract a field of specified width and at specified offset from a slice of uint64.
 //
 // Parameters:
-// inputBuffer: A pre-allocated slice that can be used to avoid internal memory allocation. If nil, a new slice will be allocated.
+// inputBuffer: A pre-allocated slice that can be used to avoid internal memory allocation.
+// If nil, a new slice will be allocated.
 // fieldSlice: Slice of uint64 from which the field will be extracted.
 // widthInBits: Width of the field to be extracted.
 // offsetInBits: Starting position of the field in the slice.
@@ -17,12 +18,7 @@ import (
 // uint64 value of the extracted field.
 // error if widthInBits is 0 or more than 64, if offsetInBits and widthInBits combination is out of range of input slice,
 // or if the provided inputBuffer isn't large enough to hold the fieldSlice.
-func Get64BitsFieldFromSlice(inputBuffer, fieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
-
-	// If an input buffer is provided and it's large enough, use it to avoid internal allocation.
-	// Otherwise, allocate a new slice.
-	// Create a copy of the input slice to avoid any side effects on the input data
-	inputFieldSlice, err := prepareInputSlice(inputBuffer, fieldSlice)
+func Get64BitsFieldFromSlice(inputFieldSlice []uint64, widthInBits, offsetInBits uint64) (outputField uint64, err error) {
 
 	// Checking if width is more than 64 bits. If so, return an error as it cannot handle more than 64 bits.
 	if widthInBits > 64 {
@@ -77,10 +73,9 @@ func Get64BitsFieldFromSlice(inputBuffer, fieldSlice []uint64, widthInBits, offs
 // Returns:
 // Slice of uint64 with the field set at the specified position and width.
 // error if widthInBits is 0 or more than 64, or if offsetInBits and widthInBits combination is out of range of input slice.
-func Set64BitsFieldToSlice(inputFieldField []uint64, inputField, widthInBits, offsetInBits uint64) (result []uint64, err error) {
-	// Creating a copy of the input slice to avoid any side effects on the input data
-	result = make([]uint64, len(inputFieldField))
-	copy(result, inputFieldField)
+func Set64BitsFieldToSlice(destinationField []uint64, inputField, widthInBits, offsetInBits uint64) (result []uint64, err error) {
+
+	result = destinationField
 
 	// Checking if width is more than 64 bits. If so, return an error as it cannot handle more than 64 bits.
 	if widthInBits > 64 {

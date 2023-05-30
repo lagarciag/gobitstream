@@ -70,7 +70,7 @@ func TestGetBitsFromSlice(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Extract: %X", tc.expected)
 
-			actual, err := gobitstream.Get64BitsFieldFromSlice(nil, tc.slice, tc.width, tc.offset)
+			actual, err := gobitstream.Get64BitsFieldFromSlice(tc.slice, tc.width, tc.offset)
 			if err != nil {
 				if len(tc.slice) == 0 {
 					return
@@ -210,7 +210,7 @@ func TestExtractAndSetSliceBitsFromSliceRandom(t *testing.T) {
 		width := uint64(rnd.Intn(maxWidth + 1))
 		offset := uint64(rnd.Intn(len(initialSlice)*64-int(width)) + 1)
 
-		val1, err := gobitstream.Get64BitsFieldFromSlice(nil, initialSlice, width, offset)
+		val1, err := gobitstream.Get64BitsFieldFromSlice(initialSlice, width, offset)
 		if width == 0 {
 			a.NotNil(err)
 			continue
@@ -237,19 +237,8 @@ func TestExtractAndSetSliceBitsFromSliceRandom(t *testing.T) {
 
 func BenchmarkGet64BitsFieldFromSliceWithInputBuffer(b *testing.B) {
 	bits := make([]uint64, 128)
-	inputBuffer := make([]uint64, 0, 128)
 	for i := 0; i < b.N; i++ {
-		_, err := gobitstream.Get64BitsFieldFromSlice(inputBuffer, bits, 64, 32)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkGet64BitsFieldFromSliceWithOutInputBuffer(b *testing.B) {
-	bits := make([]uint64, 128)
-	for i := 0; i < b.N; i++ {
-		_, err := gobitstream.Get64BitsFieldFromSlice(nil, bits, 64, 32)
+		_, err := gobitstream.Get64BitsFieldFromSlice(bits, 64, 32)
 		if err != nil {
 			b.Fatal(err)
 		}

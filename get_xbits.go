@@ -28,7 +28,7 @@ func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (r
 	resultSubBitstream = make([]uint64, sliceWords)
 
 	if widthInBits <= 64 {
-		resultSubBitstream[0], err = Get64BitsFieldFromSlice(nil, inputFieldSlice, widthInBits, offsetInBits)
+		resultSubBitstream[0], err = Get64BitsFieldFromSlice(inputFieldSlice, widthInBits, offsetInBits)
 		return resultSubBitstream, err
 	}
 
@@ -47,7 +47,7 @@ func GetFieldFromSlice(fieldSlice []uint64, widthInBits, offsetInBits uint64) (r
 			continue
 		}
 
-		resultSubBitstream[i], err = Get64BitsFieldFromSlice(nil, fieldSlice, uint64(localWidth), offsetInBits+uint64(i*64))
+		resultSubBitstream[i], err = Get64BitsFieldFromSlice(fieldSlice, uint64(localWidth), offsetInBits+uint64(i*64))
 		if err != nil {
 			return nil, err
 		}
