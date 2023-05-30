@@ -14,7 +14,7 @@ func TestExtractBitsFromSlice(t *testing.T) {
 	offset := uint64(16)
 	expected := (slice[0] >> 16) & ((1 << width) - 1)
 
-	actual, err := Get64BitsFieldFromSlice(slice, width, offset)
+	actual, err := Get64BitsFieldFromSlice(nil, slice, width, offset)
 	a.Nil(err)
 	a.Equal(actual, expected)
 }
@@ -30,22 +30,22 @@ func TestExtractBitsFromSlice2(t *testing.T) {
 	expected |= slice[1] & ((1 << remainingBits) - 1) << (64 - offset)
 
 	t.Logf("Extract: %X", expected)
-	actual, err := Get64BitsFieldFromSlice(slice, width, offset)
+	actual, err := Get64BitsFieldFromSlice(nil, slice, width, offset)
 	a.Nil(err)
 	a.Equal(actual, expected)
 
 	// Test an error for zero width
 	width = uint64(0)
-	_, err = Get64BitsFieldFromSlice(slice, width, offset)
+	_, err = Get64BitsFieldFromSlice(nil, slice, width, offset)
 	a.NotNil(err)
 	// Test an error for width greater than 64
 	width = uint64(65)
-	_, err = Get64BitsFieldFromSlice(slice, width, offset)
+	_, err = Get64BitsFieldFromSlice(nil, slice, width, offset)
 	a.NotNil(err)
 
 	// Test an error for out-of-range offset
 	offset = uint64(128)
-	_, err = Get64BitsFieldFromSlice(slice, width, offset)
+	_, err = Get64BitsFieldFromSlice(nil, slice, width, offset)
 	a.NotNil(err)
 }
 
