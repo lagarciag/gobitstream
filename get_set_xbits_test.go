@@ -71,7 +71,7 @@ func TestExtractAndSetBitsSliceFromSlice(t *testing.T) {
 		t.Log(tc.name)
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Extract: %X", tc.expected)
-			actual, err := gobitstream.GetFieldFromSlice(tc.slice, tc.width, tc.offset)
+			actual, err := gobitstream.GetFieldFromSlice(tc.width, tc.offset, tc.slice, nil)
 			if err != nil {
 				if len(tc.slice) == 0 {
 					return
@@ -98,7 +98,7 @@ func TestExtractAndSetSliceBitsFromSlice2(t *testing.T) {
 	expected2 := []uint64{0x123456789ab0000, 0x10}
 
 	t.Logf("Extract: %X", expected)
-	actual, err := gobitstream.GetFieldFromSlice(slice, width, offset)
+	actual, err := gobitstream.GetFieldFromSlice(width, offset, slice, nil)
 	a.Nil(err)
 	a.Equal(actual[0], expected)
 
@@ -294,7 +294,7 @@ func TestGetBitsFromSlice2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Extract: %X", tc.expected)
 
-			actual, err := gobitstream.GetFieldFromSlice(tc.slice, tc.width, tc.offset)
+			actual, err := gobitstream.GetFieldFromSlice(tc.width, tc.offset, tc.slice, nil)
 			if err != nil {
 				if len(tc.slice) == 0 {
 					return
@@ -436,7 +436,7 @@ func TestExtractAndSetSliceBitsFromSliceRandom2(t *testing.T) {
 		width := uint64(rnd.Intn(maxWidth + 1))
 		offset := uint64(rnd.Intn(len(initialSlice)*64-int(width)) + 1)
 
-		val1, err := gobitstream.GetFieldFromSlice(initialSlice, width, offset)
+		val1, err := gobitstream.GetFieldFromSlice(width, offset, initialSlice, nil)
 		if width == 0 {
 			if !a.NotNil(err) {
 				t.Log("width is zero: ", width)
@@ -469,7 +469,7 @@ func TestExtractAndSetSliceBitsFromSliceRandom2(t *testing.T) {
 func BenchmarkGetFieldFromSliceWithInputBuffer(b *testing.B) {
 	bits := make([]uint64, 64*10)
 	for i := 0; i < b.N; i++ {
-		_, err := gobitstream.GetFieldFromSlice(bits, 64*4, 64+32*2)
+		_, err := gobitstream.GetFieldFromSlice(64*4, 64+32*2, bits, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
