@@ -1,13 +1,13 @@
 package gobitstream
 
 import (
-	"github.hpe.com/hpe-networking/commontest"
+	"github.com/lagarciag/gobitstream/tests"
 	"reflect"
 	"testing"
 )
 
 func TestShiftSliceofUint64(t *testing.T) {
-	_, a := commontest.InitTestLogToStdout(t)
+	_, a, _ := tests.InitTest(t)
 	// Test case 1: Shift by 1 bit
 
 	// Test case 3: Shift by 0 bits (no shift)
